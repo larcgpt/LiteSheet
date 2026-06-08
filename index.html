@@ -1,0 +1,2121 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiteSheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Merriweather:ital,wght@0,300;0,400;1,300&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@300;400;600&family=Open+Sans:wght@300;400;600&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang TC','Microsoft JhengHei',sans-serif;font-size:12px}
+#app{width:100%;height:100%;display:flex;flex-direction:column;background:#fff}
+
+/* ===== MENUBAR ===== */
+.menubar{height:28px;background:#f8f9fa;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;padding:0 8px;flex-shrink:0;user-select:none}
+.menubar-brand{font-size:13px;font-weight:600;color:#1a73e8;margin-right:16px;white-space:nowrap}
+.menu-item{position:relative;padding:4px 10px;cursor:pointer;border-radius:4px;font-size:12px;color:#333;white-space:nowrap}
+.menu-item:hover{background:#e8e8e8}
+.menu-dropdown{position:absolute;top:100%;left:0;background:#fff;border:1px solid #e0e0e0;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.15);padding:4px 0;min-width:220px;z-index:10000;display:none}
+.menu-item:hover .menu-dropdown{display:block}
+.menu-dropdown-item{padding:7px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;color:#333;font-size:12px}
+.menu-dropdown-item:hover{background:#f1f3f4}
+.menu-dropdown-item .shortcut{color:#888;font-size:11px;margin-left:24px}
+.menu-separator{height:1px;background:#e0e0e0;margin:4px 0}
+.submenu{position:absolute;left:100%;top:-4px;background:#fff;border:1px solid #e0e0e0;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.15);padding:4px 0;min-width:180px;display:none;z-index:10001}
+.menu-dropdown-item:hover>.submenu{display:block}
+
+/* ===== TOOLBAR ===== */
+.toolbar{height:36px;background:#fff;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;padding:0 4px;gap:1px;flex-shrink:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.toolbar::-webkit-scrollbar{display:none}
+.toolbar-group{display:flex;align-items:center;gap:1px;padding:0 2px;flex-shrink:0}
+.toolbar-separator{width:1px;height:22px;background:#e0e0e0;margin:0 3px;flex-shrink:0}
+.toolbar-btn{width:26px;height:26px;border:none;background:transparent;border-radius:3px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#444;font-size:13px;position:relative;flex-shrink:0;transition:background 0.1s}
+.toolbar-btn:hover{background:#f1f3f4}
+.toolbar-btn.active{background:#e8f0fe;color:#1a73e8}
+.toolbar-btn[title]:hover::after{content:attr(title);position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#333;color:#fff;font-size:11px;padding:3px 7px;border-radius:4px;white-space:nowrap;pointer-events:none;z-index:99999}
+.toolbar-select{height:26px;border:1px solid #dadce0;border-radius:3px;padding:0 4px;background:#fff;cursor:pointer;font-size:12px;flex-shrink:0;outline:none}
+.toolbar-select:focus{border-color:#1a73e8}
+.toolbar-input{height:26px;border:1px solid #dadce0;border-radius:3px;padding:0 4px;background:#fff;font-size:12px;flex-shrink:0;outline:none;width:48px;text-align:center}
+.toolbar-input:focus{border-color:#1a73e8}
+
+/* color underline on text/bg color buttons */
+.color-btn-indicator{position:absolute;bottom:2px;left:4px;right:4px;height:3px;border-radius:1px}
+
+/* ===== FORMULA BAR ===== */
+.formula-bar{height:26px;background:#fff;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;flex-shrink:0}
+.cell-address{width:64px;height:100%;border:none;border-right:1px solid #e0e0e0;text-align:center;font-size:12px;font-weight:500;outline:none}
+.formula-icon{width:28px;height:100%;display:flex;align-items:center;justify-content:center;border-right:1px solid #e0e0e0;color:#555;font-style:italic;font-size:13px;cursor:default;user-select:none}
+.formula-input{flex:1;height:100%;border:none;padding:0 8px;font-size:12px;font-family:'Courier New',monospace;outline:none}
+.formula-input:focus{background:#fafcff}
+
+/* ===== SPREADSHEET ===== */
+.spreadsheet-container{flex:1;overflow:hidden;position:relative}
+#image-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:100}
+.float-img-wrapper{position:absolute;pointer-events:auto;cursor:move;user-select:none}
+.float-img-wrapper img{display:block;width:100%;height:100%;object-fit:fill}
+.float-img-wrapper .img-resize-handle{position:absolute;width:8px;height:8px;background:#fff;border:1px solid #1a73e8;border-radius:1px;z-index:2}
+.float-img-wrapper .img-resize-handle.nw{top:-4px;left:-4px;cursor:nw-resize}
+.float-img-wrapper .img-resize-handle.n {top:-4px;left:50%;transform:translateX(-50%);cursor:n-resize}
+.float-img-wrapper .img-resize-handle.ne{top:-4px;right:-4px;cursor:ne-resize}
+.float-img-wrapper .img-resize-handle.e {top:50%;right:-4px;transform:translateY(-50%);cursor:e-resize}
+.float-img-wrapper .img-resize-handle.se{bottom:-4px;right:-4px;cursor:se-resize}
+.float-img-wrapper .img-resize-handle.s {bottom:-4px;left:50%;transform:translateX(-50%);cursor:s-resize}
+.float-img-wrapper .img-resize-handle.sw{bottom:-4px;left:-4px;cursor:sw-resize}
+.float-img-wrapper .img-resize-handle.w {top:50%;left:-4px;transform:translateY(-50%);cursor:w-resize}
+.float-img-wrapper .img-delete-btn{position:absolute;top:-10px;right:-10px;width:18px;height:18px;background:#e53935;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:11px;display:none;align-items:center;justify-content:center;z-index:3;line-height:1;pointer-events:auto}
+.float-img-wrapper.selected .img-delete-btn{display:flex}
+.float-img-wrapper.selected{outline:2px solid #1a73e8}
+
+/* freeze lines */
+#freeze-line-h{position:absolute;left:0;right:0;height:2px;background:#1a73e8;pointer-events:none;z-index:50;display:none}
+#freeze-line-v{position:absolute;top:0;bottom:0;width:2px;background:#1a73e8;pointer-events:none;z-index:50;display:none}
+
+/* ===== SHEET TABS ===== */
+.sheet-tabs{height:30px;background:#f8f9fa;border-top:1px solid #e0e0e0;display:flex;align-items:center;padding:0 4px;gap:2px;flex-shrink:0;overflow-x:auto;scrollbar-width:none}
+.sheet-tabs::-webkit-scrollbar{display:none}
+.sheet-tab{padding:4px 14px;border:1px solid #dadce0;background:#fff;border-radius:4px 4px 0 0;cursor:pointer;font-size:12px;user-select:none;white-space:nowrap;flex-shrink:0}
+.sheet-tab:hover{background:#f1f3f4}
+.sheet-tab.active{background:#1a73e8;color:#fff;border-color:#1a73e8}
+.sheet-tab.drop-target{box-shadow:inset 0 -2px 0 0 #1a73e8}
+.sheet-tab[draggable=true]{cursor:grab}
+.sheet-tab[draggable=true]:active{cursor:grabbing}
+.sheet-tab-add{width:24px;height:24px;border:1px solid #dadce0;background:#fff;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.sheet-tab-add:hover{background:#f1f3f4}
+
+/* ===== STATUS BAR ===== */
+.status-bar{height:22px;background:#f8f9fa;border-top:1px solid #e0e0e0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:11px;color:#666;flex-shrink:0}
+.status-right{display:flex;align-items:center;gap:16px}
+.status-stats{color:#555}
+
+/* ===== CONTEXT MENU ===== */
+.context-menu{position:fixed;background:#fff;border:1px solid #e0e0e0;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.15);padding:4px 0;min-width:200px;z-index:10000;display:none}
+.context-menu-item{padding:7px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.context-menu-item:hover{background:#f1f3f4}
+.context-menu-item .shortcut{color:#888;font-size:11px}
+.context-menu-separator{height:1px;background:#e0e0e0;margin:4px 0}
+
+/* ===== DIALOG ===== */
+.dialog-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);z-index:20000;display:none;align-items:center;justify-content:center}
+.dialog{background:#fff;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.25);min-width:380px;max-width:90vw;max-height:90vh;overflow:auto}
+.dialog-header{padding:14px 20px;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;justify-content:space-between;background:#f8f9fa;border-radius:8px 8px 0 0}
+.dialog-header h3{font-size:14px;font-weight:600;color:#333}
+.dialog-close{width:24px;height:24px;border:none;background:transparent;cursor:pointer;font-size:18px;color:#666;border-radius:4px}
+.dialog-close:hover{background:#e0e0e0}
+.dialog-body{padding:20px}
+.dialog-footer{padding:12px 20px;border-top:1px solid #e0e0e0;display:flex;justify-content:flex-end;gap:8px}
+.btn{padding:7px 16px;border:1px solid #dadce0;background:#fff;border-radius:4px;cursor:pointer;font-size:13px}
+.btn:hover{background:#f1f3f4}
+.btn-primary{background:#1a73e8;color:#fff;border-color:#1a73e8}
+.btn-primary:hover{background:#1557b0}
+.btn-danger{background:#e53935;color:#fff;border-color:#e53935}
+.btn-danger:hover{background:#b71c1c}
+
+/* ===== BORDER PICKER ===== */
+.border-popup{position:fixed;background:#fff;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2);padding:12px;z-index:100000;width:240px;display:none}
+.border-popup-title{font-size:12px;font-weight:600;color:#555;margin-bottom:8px}
+.border-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px}
+.border-grid-btn{height:30px;border:1px solid #dadce0;background:#fff;border-radius:4px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.border-grid-btn:hover{background:#f1f3f4;border-color:#1a73e8}
+.border-options{display:flex;align-items:center;gap:8px;margin-top:8px}
+.border-options label{font-size:11px;color:#555}
+.border-options select{flex:1;height:24px;border:1px solid #dadce0;border-radius:3px;font-size:11px}
+.border-options input[type=color]{width:28px;height:24px;border:1px solid #dadce0;border-radius:3px;cursor:pointer;padding:1px}
+
+/* ===== COLOR PICKER ===== */
+.color-picker-popup{position:fixed;background:#fff;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2);padding:12px;z-index:100000}
+.color-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;margin-bottom:8px}
+.color-swatch{width:20px;height:20px;border:1px solid #e0e0e0;border-radius:2px;cursor:pointer}
+.color-swatch:hover{transform:scale(1.2);z-index:1;position:relative}
+.color-custom-row{display:flex;gap:6px;align-items:center}
+.color-custom-row input[type=color]{flex:1;height:26px;border:1px solid #dadce0;border-radius:3px;cursor:pointer;padding:1px}
+.color-none-btn{padding:3px 8px;border:1px solid #dadce0;border-radius:3px;cursor:pointer;font-size:11px;background:#fff}
+.color-none-btn:hover{background:#f1f3f4}
+
+/* ===== FIND/REPLACE ===== */
+.find-bar{padding:4px 0}
+.find-bar label{display:block;font-size:12px;color:#555;margin-bottom:4px}
+.find-bar input{width:100%;height:28px;border:1px solid #dadce0;border-radius:4px;padding:0 8px;font-size:12px;outline:none}
+.find-bar input:focus{border-color:#1a73e8}
+.find-options{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap}
+.find-options label{font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer}
+
+/* ===== FREEZE POPUP ===== */
+.freeze-popup{position:fixed;background:#fff;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2);padding:6px 0;z-index:100000;min-width:160px;display:none}
+.freeze-popup-item{padding:8px 16px;cursor:pointer;font-size:12px;color:#333}
+.freeze-popup-item:hover{background:#f1f3f4}
+
+/* ===== MERGE POPUP ===== */
+.merge-popup{position:fixed;background:#fff;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2);padding:6px 0;z-index:100000;min-width:160px;display:none}
+.merge-popup-item{padding:8px 16px;cursor:pointer;font-size:12px;color:#333}
+.merge-popup-item:hover{background:#f1f3f4}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  .menubar,.toolbar,.formula-bar,.sheet-tabs,.status-bar,.context-menu,.dialog-overlay{display:none!important}
+  .spreadsheet-container{position:static;height:auto}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ===== MENUBAR ===== -->
+  <div class="menubar">
+    <span class="menubar-brand">📊 LiteSheet</span>
+    <div class="menu-item">檔案<div class="menu-dropdown">
+      <div class="menu-dropdown-item" data-action="new"><span>📄 新建</span><span class="shortcut">Ctrl+N</span></div>
+      <div class="menu-separator"></div>
+      <div class="menu-dropdown-item" data-action="open-xlsx"><span>📂 開啟 xlsx...</span><span class="shortcut">Ctrl+O</span></div>
+      <div class="menu-dropdown-item" data-action="open"><span>📂 開啟 json...</span></div>
+      <div class="menu-separator"></div>
+      <div class="menu-dropdown-item" data-action="save-xlsx"><span>💾 另存為 xlsx</span><span class="shortcut">Ctrl+S</span></div>
+      <div class="menu-dropdown-item" data-action="save"><span>💾 另存為 json</span></div>
+      <div class="menu-separator"></div>
+      <div class="menu-dropdown-item" data-action="export-csv"><span>📤 匯出 CSV</span></div>
+      <div class="menu-separator"></div>
+      <div class="menu-dropdown-item" data-action="print"><span>🖨 列印</span><span class="shortcut">Ctrl+P</span></div>
+    </div></div>
+    <div class="menu-item">編輯<div class="menu-dropdown">
+      <div class="menu-dropdown-item" data-action="undo"><span>↩ 復原</span><span class="shortcut">Ctrl+Z</span></div>
+      <div class="menu-dropdown-item" data-action="redo"><span>↪ 重做</span><span class="shortcut">Ctrl+Y</span></div>
+      <div class="menu-separator"></div>
+      <div class="menu-dropdown-item" data-action="cut"><span>✂ 剪下</span><span class="shortcut">Ctrl+X</span></div>
+      <div class="menu-dropdown-item" data-action="copy"><span>📋 複製</span><span class="shortcut">Ctrl+C</span></div>
+      <div class="menu-dropdown-item" data-action="paste"><span>📌 貼上</span><span class="shortcut">Ctrl+V</span></div>
+      <div class="menu-separator"></div>
+      <div class="menu-dropdown-item" data-action="find"><span>🔍 尋找與取代</span><span class="shortcut">Ctrl+H</span></div>
+      <div class="menu-dropdown-item" data-action="select-all"><span>☑ 全選</span><span class="shortcut">Ctrl+A</span></div>
+    </div></div>
+    <div class="menu-item">插入<div class="menu-dropdown">
+      <div class="menu-dropdown-item" data-action="insert-row"><span>↕ 插入列</span></div>
+      <div class="menu-dropdown-item" data-action="insert-col"><span>↔ 插入欄</span></div>
+      <div class="menu-dropdown-item" data-action="insert-sheet"><span>📋 插入工作表</span></div>
+      <div class="menu-separator"></div>
+      <div class="menu-dropdown-item" data-action="insert-image-menu"><span>🖼 插入圖片</span></div>
+      <div class="menu-dropdown-item" data-action="insert-link"><span>🔗 插入連結</span><span class="shortcut">Ctrl+K</span></div>
+      <div class="menu-dropdown-item" data-action="insert-comment"><span>💬 插入註解</span></div>
+      <div class="menu-dropdown-item" data-action="insert-function"><span>fx 插入函數</span></div>
+      <div class="menu-dropdown-item" data-action="insert-checkbox"><span>☑ 插入核取方塊</span></div>
+    </div></div>
+    <div class="menu-item">格式<div class="menu-dropdown">
+      <div class="menu-dropdown-item" data-action="format-bold"><span><b>B</b> 粗體</span><span class="shortcut">Ctrl+B</span></div>
+      <div class="menu-dropdown-item" data-action="format-italic"><span><i>I</i> 斜體</span><span class="shortcut">Ctrl+I</span></div>
+      <div class="menu-dropdown-item" data-action="format-underline"><span><u>U</u> 底線</span><span class="shortcut">Ctrl+U</span></div>
+      <div class="menu-separator"></div>
+      <div class="menu-dropdown-item" data-action="align-left"><span>靠左對齊</span></div>
+      <div class="menu-dropdown-item" data-action="align-center"><span>置中對齊</span></div>
+      <div class="menu-dropdown-item" data-action="align-right"><span>靠右對齊</span></div>
+      <div class="menu-separator"></div>
+      <div class="menu-dropdown-item" data-action="merge"><span>合併儲存格</span></div>
+      <div class="menu-dropdown-item" data-action="unmerge"><span>取消合併</span></div>
+      <div class="menu-separator"></div>
+      <div class="menu-dropdown-item" data-action="row-height"><span>列高...</span></div>
+      <div class="menu-dropdown-item" data-action="col-width"><span>欄寬...</span></div>
+      <div class="menu-dropdown-item" data-action="format-cells"><span>設定儲存格格式...</span><span class="shortcut">Ctrl+1</span></div>
+    </div></div>
+    <div class="menu-item">資料<div class="menu-dropdown">
+      <div class="menu-dropdown-item" data-action="sort-asc"><span>↑ 遞增排序</span></div>
+      <div class="menu-dropdown-item" data-action="sort-desc"><span>↓ 遞減排序</span></div>
+      <div class="menu-separator"></div>
+      <div class="menu-dropdown-item" data-action="filter"><span>🔽 自動篩選</span></div>
+      <div class="menu-dropdown-item" data-action="clear-filter"><span>清除篩選</span></div>
+      <div class="menu-separator"></div>
+      <div class="menu-dropdown-item" data-action="data-validation"><span>資料驗證...</span></div>
+    </div></div>
+    <div class="menu-item">檢視<div class="menu-dropdown">
+      <div class="menu-dropdown-item" data-action="freeze-row"><span>凍結首列</span></div>
+      <div class="menu-dropdown-item" data-action="freeze-col"><span>凍結首欄</span></div>
+      <div class="menu-dropdown-item" data-action="freeze-both"><span>凍結首欄與首列</span></div>
+      <div class="menu-dropdown-item" data-action="freeze-none"><span>取消凍結</span></div>
+      <div class="menu-separator"></div>
+      <div class="menu-dropdown-item" data-action="zoom-in"><span>🔍 放大</span></div>
+      <div class="menu-dropdown-item" data-action="zoom-out"><span>🔍 縮小</span></div>
+      <div class="menu-dropdown-item" data-action="zoom-reset"><span>縮放重設 100%</span></div>
+    </div></div>
+    <div class="menu-item">說明<div class="menu-dropdown">
+      <div class="menu-dropdown-item" data-action="shortcuts"><span>⌨ 鍵盤快速鍵</span></div>
+      <div class="menu-dropdown-item" data-action="about"><span>ℹ 關於 LiteSheet...</span></div>
+    </div></div>
+  </div>
+
+  <!-- ===== TOOLBAR ===== -->
+  <div class="toolbar" id="toolbar">
+    <!-- Group 1: History -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-undo" title="復原 (Ctrl+Z)">↩</button>
+      <button class="toolbar-btn" id="btn-redo" title="重做 (Ctrl+Y)">↪</button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 2: Print / Save -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-print" title="列印 (Ctrl+P)">🖨</button>
+      <button class="toolbar-btn" id="btn-save" title="儲存 (Ctrl+S)">💾</button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 3: Font face & size -->
+    <div class="toolbar-group">
+      <select class="toolbar-select" id="font-family" title="字型" style="width:110px">
+        <option value="Arial" style="font-family: Arial">Arial</option>
+        <option value="Times New Roman" style="font-family: 'Times New Roman'">Times New Roman</option>
+        <option value="Courier New" style="font-family: 'Courier New'">Courier New</option>
+        <option value="Georgia" style="font-family: Georgia">Georgia</option>
+        <option value="Verdana" style="font-family: Verdana">Verdana</option>
+        <option value="Tahoma" style="font-family: Tahoma">Tahoma</option>
+        <option value="Inter" style="font-family: Inter">Inter</option>
+        <option value="Roboto" style="font-family: Roboto">Roboto</option>
+        <option value="Open Sans" style="font-family: 'Open Sans'">Open Sans</option>
+        <option value="Merriweather" style="font-family: Merriweather">Merriweather</option>
+        <option value="Microsoft JhengHei" style="font-family: 'Microsoft JhengHei'">微軟正黑體</option>
+        <option value="DFKai-SB" style="font-family: 'DFKai-SB', 標楷體">標楷體</option>
+        <option value="PMingLiU" style="font-family: 'PMingLiU', 新細明體">新細明體</option>
+        <option value="MingLiU" style="font-family: MingLiU, 細明體">細明體</option>
+        <option value="Noto Sans TC" style="font-family: 'Noto Sans TC'">Noto Sans TC</option>
+        <option value="Noto Serif TC" style="font-family: 'Noto Serif TC'">Noto Serif TC</option>
+      </select>
+      <button class="toolbar-btn" id="btn-font-size-dec" title="縮小字型" style="font-size:11px">A↓</button>
+      <input class="toolbar-input" id="font-size" type="number" min="6" max="400" value="12" title="字型大小" style="width:42px">
+      <button class="toolbar-btn" id="btn-font-size-inc" title="放大字型" style="font-size:11px">A↑</button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 4: Bold / Italic / Underline / Strikethrough -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-bold" title="粗體 (Ctrl+B)"><b>B</b></button>
+      <button class="toolbar-btn" id="btn-italic" title="斜體 (Ctrl+I)"><i>I</i></button>
+      <button class="toolbar-btn" id="btn-underline" title="底線 (Ctrl+U)"><u>U</u></button>
+      <button class="toolbar-btn" id="btn-strikethrough" title="刪除線"><s>S</s></button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 5: Colors -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-text-color" title="文字色彩" style="font-weight:bold">
+        A<span class="color-btn-indicator" id="text-color-indicator" style="background:#000"></span>
+      </button>
+      <button class="toolbar-btn" id="btn-bg-color" title="填滿色彩">
+        <span style="font-size:14px">🎨</span>
+        <span class="color-btn-indicator" id="bg-color-indicator" style="background:transparent;border:1px solid #ccc"></span>
+      </button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 6: Borders -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-border" title="框線" style="font-size:15px">⊞</button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 7: Merge -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-merge-menu" title="合併儲存格">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+          <rect x="1" y="1" width="5" height="5" fill="currentColor" fill-opacity="0.15"/>
+          <rect x="1" y="8" width="5" height="5" fill="currentColor" fill-opacity="0.15"/>
+          <rect x="8" y="1" width="5" height="12" fill="currentColor" fill-opacity="0.15"/>
+        </svg>
+      </button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 8: Horizontal Align -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-align-left" title="靠左對齊">
+        <svg width="14" height="14" viewBox="0 0 14 14"><line x1="1" y1="3" x2="13" y2="3" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="7" x2="9" y2="7" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="11" x2="13" y2="11" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <button class="toolbar-btn" id="btn-align-center" title="置中對齊">
+        <svg width="14" height="14" viewBox="0 0 14 14"><line x1="1" y1="3" x2="13" y2="3" stroke="currentColor" stroke-width="1.5"/><line x1="3" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="11" x2="13" y2="11" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <button class="toolbar-btn" id="btn-align-right" title="靠右對齊">
+        <svg width="14" height="14" viewBox="0 0 14 14"><line x1="1" y1="3" x2="13" y2="3" stroke="currentColor" stroke-width="1.5"/><line x1="5" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="11" x2="13" y2="11" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 9: Vertical Align -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-valign-top" title="靠上對齊">
+        <svg width="14" height="14" viewBox="0 0 14 14"><line x1="1" y1="2" x2="13" y2="2" stroke="currentColor" stroke-width="1.5"/><line x1="4" y1="2" x2="4" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="2" x2="10" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <button class="toolbar-btn" id="btn-valign-mid" title="垂直置中">
+        <svg width="14" height="14" viewBox="0 0 14 14"><line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.5"/><line x1="4" y1="2" x2="4" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="2" x2="10" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <button class="toolbar-btn" id="btn-valign-bot" title="靠下對齊">
+        <svg width="14" height="14" viewBox="0 0 14 14"><line x1="1" y1="12" x2="13" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="4" y1="2" x2="4" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="2" x2="10" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 10: Wrap -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-wrap" title="自動換行">
+        <svg width="14" height="14" viewBox="0 0 14 14"><path d="M1 3h12M1 7h8q2 0 2 2t-2 2H7l2-2m0 4l-2-2" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><line x1="1" y1="11" x2="5" y2="11" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 11: Number format -->
+    <div class="toolbar-group">
+      <select class="toolbar-select" id="number-format" title="數字格式" style="width:90px">
+        <option value="general">一般</option>
+        <option value="number">數值</option>
+        <option value="currency">貨幣</option>
+        <option value="accounting">會計</option>
+        <option value="percent">百分比</option>
+        <option value="date">日期</option>
+        <option value="time">時間</option>
+        <option value="datetime">日期時間</option>
+        <option value="scientific">科學記號</option>
+        <option value="text">文字</option>
+      </select>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 12: Indent -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-indent-dec" title="減少縮排">
+        <svg width="14" height="14" viewBox="0 0 14 14"><line x1="1" y1="3" x2="13" y2="3" stroke="currentColor" stroke-width="1.5"/><line x1="4" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="11" x2="13" y2="11" stroke="currentColor" stroke-width="1.5"/><polyline points="3,5 1,7 3,9" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+      </button>
+      <button class="toolbar-btn" id="btn-indent-inc" title="增加縮排">
+        <svg width="14" height="14" viewBox="0 0 14 14"><line x1="1" y1="3" x2="13" y2="3" stroke="currentColor" stroke-width="1.5"/><line x1="4" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="11" x2="13" y2="11" stroke="currentColor" stroke-width="1.5"/><polyline points="1,5 3,7 1,9" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+      </button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 13: Autosum -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-autosum" title="自動加總 (∑)" style="font-weight:bold;font-size:15px">∑</button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 14: Sort / Filter -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-sort-asc" title="遞增排序">
+        <svg width="14" height="14" viewBox="0 0 14 14"><line x1="2" y1="12" x2="2" y2="2" stroke="currentColor" stroke-width="1.5"/><polyline points="1,4 2,2 3,4" stroke="currentColor" stroke-width="1.2" fill="none"/><line x1="5" y1="4" x2="13" y2="4" stroke="currentColor" stroke-width="1.5"/><line x1="5" y1="8" x2="11" y2="8" stroke="currentColor" stroke-width="1.5"/><line x1="5" y1="12" x2="8" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <button class="toolbar-btn" id="btn-sort-desc" title="遞減排序">
+        <svg width="14" height="14" viewBox="0 0 14 14"><line x1="2" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5"/><polyline points="1,10 2,12 3,10" stroke="currentColor" stroke-width="1.2" fill="none"/><line x1="5" y1="4" x2="13" y2="4" stroke="currentColor" stroke-width="1.5"/><line x1="5" y1="8" x2="11" y2="8" stroke="currentColor" stroke-width="1.5"/><line x1="5" y1="12" x2="8" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <button class="toolbar-btn" id="btn-filter" title="自動篩選">🔽</button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 15: Freeze panes -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-freeze" title="凍結視窗" style="font-size:11px;width:auto;padding:0 4px">🔒凍結</button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 16: Insert image / link / comment -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-insert-image" title="插入圖片">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="1.5" y="2.5" width="13" height="11" rx="1.2"/>
+          <circle cx="5.5" cy="6.5" r="1.2"/>
+          <path d="M2 11.5 L6 8 L9 10.5 L12 7.5 L14 9.5"/>
+        </svg>
+      </button>
+      <button class="toolbar-btn" id="btn-insert-link" title="插入連結 (Ctrl+K)">🔗</button>
+      <button class="toolbar-btn" id="btn-insert-comment" title="插入註解">💬</button>
+      <input id="image-uploader" type="file" accept="image/*" style="display:none">
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 17: Find -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-find" title="尋找與取代 (Ctrl+H)">🔍</button>
+    </div>
+    <div class="toolbar-separator"></div>
+
+    <!-- Group 18: Zoom -->
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-zoom-out" title="縮小">−</button>
+      <span id="zoom-label" style="font-size:11px;min-width:34px;text-align:center;color:#555">100%</span>
+      <button class="toolbar-btn" id="btn-zoom-in" title="放大">+</button>
+    </div>
+  </div>
+
+  <!-- ===== FORMULA BAR ===== -->
+  <div class="formula-bar">
+    <input type="text" class="cell-address" id="cell-address" value="A1" readonly>
+    <span class="formula-icon">fx</span>
+    <input type="text" class="formula-input" id="formula-input" placeholder="輸入值或公式">
+  </div>
+
+  <!-- ===== SPREADSHEET CANVAS + IMAGE OVERLAY ===== -->
+  <div class="spreadsheet-container" id="spreadsheet">
+    <div id="image-overlay">
+      <div id="freeze-line-h"></div>
+      <div id="freeze-line-v"></div>
+    </div>
+  </div>
+
+  <!-- ===== SHEET TABS ===== -->
+  <div class="sheet-tabs" id="sheet-tabs">
+    <button class="sheet-tab-add" id="btn-add-sheet" title="新增工作表">+</button>
+  </div>
+
+  <!-- ===== STATUS BAR ===== -->
+  <div class="status-bar">
+    <span id="status-mode">就緒</span>
+    <div class="status-right">
+      <span id="status-stats" class="status-stats"></span>
+      <span id="status-cell">A1</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CONTEXT MENU ===== -->
+<div class="context-menu" id="context-menu">
+  <div class="context-menu-item" data-action="cut">剪下 <span class="shortcut">Ctrl+X</span></div>
+  <div class="context-menu-item" data-action="copy">複製 <span class="shortcut">Ctrl+C</span></div>
+  <div class="context-menu-item" data-action="paste">貼上 <span class="shortcut">Ctrl+V</span></div>
+  <div class="context-menu-separator"></div>
+  <div class="context-menu-item" data-action="insert-row">插入列</div>
+  <div class="context-menu-item" data-action="insert-col">插入欄</div>
+  <div class="context-menu-item" data-action="delete-row">刪除列</div>
+  <div class="context-menu-item" data-action="delete-col">刪除欄</div>
+  <div class="context-menu-separator"></div>
+  <div class="context-menu-item" data-action="merge">合併儲存格</div>
+  <div class="context-menu-item" data-action="unmerge">取消合併</div>
+  <div class="context-menu-separator"></div>
+  <div class="context-menu-item" data-action="row-height">列高...</div>
+  <div class="context-menu-item" data-action="col-width">欄寬...</div>
+  <div class="context-menu-separator"></div>
+  <div class="context-menu-item" data-action="clear">清除內容</div>
+  <div class="context-menu-item" data-action="insert-comment">插入註解</div>
+  <div class="context-menu-item" data-action="insert-link">插入連結</div>
+</div>
+
+<!-- ===== DIALOG ===== -->
+<div class="dialog-overlay" id="dialog-overlay">
+  <div class="dialog">
+    <div class="dialog-header"><h3 id="dialog-title">對話框</h3><button class="dialog-close" id="dialog-close">×</button></div>
+    <div class="dialog-body" id="dialog-body"></div>
+    <div class="dialog-footer" id="dialog-footer">
+      <button class="btn" id="dialog-cancel">取消</button>
+      <button class="btn btn-primary" id="dialog-confirm">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BORDER POPUP ===== -->
+<div class="border-popup" id="border-popup">
+  <div class="border-popup-title">框線樣式</div>
+  <div class="border-grid">
+    <button class="border-grid-btn" data-border="all" title="全部框線">⊞</button>
+    <button class="border-grid-btn" data-border="outer" title="外框線">□</button>
+    <button class="border-grid-btn" data-border="inner" title="內框線">⊟</button>
+    <button class="border-grid-btn" data-border="none" title="清除框線">✕</button>
+    <button class="border-grid-btn" data-border="top" title="上框線">
+      <svg width="16" height="16" viewBox="0 0 16 16"><line x1="1" y1="2" x2="15" y2="2" stroke="#333" stroke-width="2"/><line x1="2" y1="2" x2="2" y2="14" stroke="#ccc" stroke-width="1"/><line x1="14" y1="2" x2="14" y2="14" stroke="#ccc" stroke-width="1"/><line x1="2" y1="14" x2="14" y2="14" stroke="#ccc" stroke-width="1"/></svg>
+    </button>
+    <button class="border-grid-btn" data-border="bottom" title="下框線">
+      <svg width="16" height="16" viewBox="0 0 16 16"><line x1="1" y1="14" x2="15" y2="14" stroke="#333" stroke-width="2"/><line x1="2" y1="2" x2="2" y2="14" stroke="#ccc" stroke-width="1"/><line x1="14" y1="2" x2="14" y2="14" stroke="#ccc" stroke-width="1"/><line x1="2" y1="2" x2="14" y2="2" stroke="#ccc" stroke-width="1"/></svg>
+    </button>
+    <button class="border-grid-btn" data-border="left" title="左框線">
+      <svg width="16" height="16" viewBox="0 0 16 16"><line x1="2" y1="1" x2="2" y2="15" stroke="#333" stroke-width="2"/><line x1="2" y1="2" x2="14" y2="2" stroke="#ccc" stroke-width="1"/><line x1="14" y1="2" x2="14" y2="14" stroke="#ccc" stroke-width="1"/><line x1="2" y1="14" x2="14" y2="14" stroke="#ccc" stroke-width="1"/></svg>
+    </button>
+    <button class="border-grid-btn" data-border="right" title="右框線">
+      <svg width="16" height="16" viewBox="0 0 16 16"><line x1="14" y1="1" x2="14" y2="15" stroke="#333" stroke-width="2"/><line x1="2" y1="2" x2="14" y2="2" stroke="#ccc" stroke-width="1"/><line x1="2" y1="2" x2="2" y2="14" stroke="#ccc" stroke-width="1"/><line x1="2" y1="14" x2="14" y2="14" stroke="#ccc" stroke-width="1"/></svg>
+    </button>
+    <button class="border-grid-btn" data-border="thick-box" title="粗外框線">⬛</button>
+    <button class="border-grid-btn" data-border="dbl-bottom" title="雙下框線">⚌</button>
+    <button class="border-grid-btn" data-border="thick-bottom" title="粗下框線">▬</button>
+    <button class="border-grid-btn" data-border="top-bottom" title="上下框線">≡</button>
+  </div>
+  <div class="border-options">
+    <label>線型</label>
+    <select id="border-style-sel">
+      <option value="thin">細線</option>
+      <option value="medium">中線</option>
+      <option value="thick">粗線</option>
+      <option value="dashed">虛線</option>
+      <option value="dotted">點線</option>
+      <option value="double">雙線</option>
+    </select>
+    <label>顏色</label>
+    <input type="color" id="border-color-sel" value="#000000">
+  </div>
+</div>
+
+<!-- ===== FREEZE POPUP ===== -->
+<div class="freeze-popup" id="freeze-popup">
+  <div class="freeze-popup-item" data-freeze="row">凍結首列</div>
+  <div class="freeze-popup-item" data-freeze="col">凍結首欄</div>
+  <div class="freeze-popup-item" data-freeze="both">凍結首欄與首列 (至選取儲存格)</div>
+  <div class="freeze-popup-item" data-freeze="none">取消所有凍結</div>
+</div>
+
+<!-- ===== MERGE POPUP ===== -->
+<div class="merge-popup" id="merge-popup">
+  <div class="merge-popup-item" data-merge="merge-all">合併所有儲存格</div>
+  <div class="merge-popup-item" data-merge="merge-h">水平合併</div>
+  <div class="merge-popup-item" data-merge="merge-v">垂直合併</div>
+  <div class="merge-popup-item" data-merge="unmerge">取消合併</div>
+</div>
+
+<script src="dist/xlsx.full.min.js"></script>
+<script src="dist/litesheet.js"></script>
+<script>
+'use strict'
+// ============= 模組 =============
+const { Store, EventBus, JSFormulaEngine: FormulaEngine, CanvasRenderer } = litesheet
+
+// ============= 範例資料 =============
+const sampleData = {
+  sheets: [{
+    name: '工作表1', index: 0, row: 100, column: 26,
+    celldata: [
+      { r: 0, c: 0, v: { v: '姓名', s: { bl: 1 } } },
+      { r: 0, c: 1, v: { v: '年齡', s: { bl: 1 } } },
+      { r: 0, c: 2, v: { v: '成績', s: { bl: 1 } } },
+      { r: 0, c: 3, v: { v: '部門', s: { bl: 1 } } },
+      { r: 1, c: 0, v: { v: '張三' } }, { r: 1, c: 1, v: { v: 25 } }, { r: 1, c: 2, v: { v: 95 } }, { r: 1, c: 3, v: { v: '研發部' } },
+      { r: 2, c: 0, v: { v: '李四' } }, { r: 2, c: 1, v: { v: 30 } }, { r: 2, c: 2, v: { v: 88 } }, { r: 2, c: 3, v: { v: '業務部' } },
+      { r: 3, c: 0, v: { v: '王五' } }, { r: 3, c: 1, v: { v: 28 } }, { r: 3, c: 2, v: { v: 92 } }, { r: 3, c: 3, v: { v: '研發部' } },
+      { r: 4, c: 0, v: { v: '趙六' } }, { r: 4, c: 1, v: { v: 35 } }, { r: 4, c: 2, v: { v: 78 } }, { r: 4, c: 3, v: { v: '人事部' } },
+      { r: 6, c: 0, v: { v: '平均' } }, { r: 6, c: 1, v: { v: null, f: '=AVERAGE(B2:B5)' } }, { r: 6, c: 2, v: { v: null, f: '=AVERAGE(C2:C5)' } },
+      { r: 7, c: 0, v: { v: '合計' } }, { r: 7, c: 1, v: { v: null, f: '=SUM(B2:B5)' } }, { r: 7, c: 2, v: { v: null, f: '=SUM(C2:C5)' } },
+      { r: 8, c: 0, v: { v: '最高' } }, { r: 8, c: 1, v: { v: null, f: '=MAX(B2:B5)' } }, { r: 8, c: 2, v: { v: null, f: '=MAX(C2:C5)' } },
+      { r: 9, c: 0, v: { v: '最低' } }, { r: 9, c: 1, v: { v: null, f: '=MIN(B2:B5)' } }, { r: 9, c: 2, v: { v: null, f: '=MIN(C2:C5)' } },
+    ],
+    config: { rowlen: {}, columnlen: { 0: 100, 1: 70, 2: 70, 3: 90 }, merge: {}, border: {} }
+  }, {
+    name: '工作表2', index: 1, row: 100, column: 26, celldata: [],
+    config: { rowlen: {}, columnlen: {}, merge: {}, border: {} }
+  }],
+  activeSheetIndex: 0
+}
+
+// ============= 全域狀態 =============
+const store = new Store(sampleData)
+const events = new EventBus()
+const formula = new FormulaEngine()
+let renderer = null
+let isEditing = false
+let editor = null
+let clipboard = null
+let currentZoom = 1.0
+let currentFreezeRow = 0, currentFreezeCol = 0
+let currentTextColor = '#000000'
+let currentBgColor = 'transparent'
+let floatImages = []   // current sheet's [{id, el, src, x, y, w, h}]
+
+// ============= 工具函數 =============
+function colLetter(c) { return String.fromCharCode(65 + c) }
+function cellRef(r, c) { return `${colLetter(c)}${r + 1}` }
+function rangeRef(r1, c1, r2, c2) { return `${cellRef(r1, c1)}:${cellRef(r2, c2)}` }
+
+// ============= 樣式設定 =============
+function updateStyleInSelection(updater) {
+  const selection = store.getState().selection
+  if (!selection) return
+  store.setStyle(selection, updater)
+}
+function toggleBold()        { updateStyleInSelection(s => s.bl = s.bl === 1 ? 0 : 1) }
+function toggleItalic()      { updateStyleInSelection(s => s.it = s.it === 1 ? 0 : 1) }
+function toggleUnderline()   { updateStyleInSelection(s => s.ul = s.ul === 1 ? 0 : 1) }
+function toggleStrikethrough(){ updateStyleInSelection(s => s.st = s.st === 1 ? 0 : 1) }
+function setAlignment(ht)    { updateStyleInSelection(s => s.ht = ht) }
+function setVAlignment(vt)   { updateStyleInSelection(s => s.vt = vt) }
+function setFontFamily(ff)   { updateStyleInSelection(s => s.ff = ff) }
+function setFontSize(fs)     { updateStyleInSelection(s => s.fs = parseInt(fs)) }
+function setTextColor(fc)    { currentTextColor = fc; document.getElementById('text-color-indicator').style.background = fc; updateStyleInSelection(s => s.fc = fc) }
+function setBgColor(bc)      { currentBgColor = bc; const ind = document.getElementById('bg-color-indicator'); ind.style.background = bc; ind.style.border = bc === 'transparent' ? '1px solid #ccc' : 'none'; updateStyleInSelection(s => s.bc = bc) }
+function toggleWrap()        { updateStyleInSelection(s => s.tb = s.tb === 2 ? 0 : 2) }
+function setIndent(delta)    { updateStyleInSelection(s => { s.indent = Math.max(0, (s.indent || 0) + delta) }) }
+function setNumberFormat(fmt){ updateStyleInSelection((s, cell) => { if (!cell.ct) cell.ct = { t: 'n' }; cell.ct.fa = fmt; if (fmt === 'general') cell.ct.fa = undefined }) }
+
+// ============= 剪貼簿 =============
+function copyCell() {
+  const s = store.getState().selection; if (!s) return
+  const data = []
+  for (let r = s.row[0]; r <= s.row[1]; r++)
+    for (let c = s.column[0]; c <= s.column[1]; c++) {
+      const cell = store.getCell(r, c)
+      if (cell) data.push({ r: r - s.row[0], c: c - s.column[0], cell: JSON.parse(JSON.stringify(cell)) })
+    }
+  clipboard = { range: JSON.parse(JSON.stringify(s)), data, isCut: false }
+}
+function cutCell() {
+  copyCell(); if (clipboard) clipboard.isCut = true
+}
+function pasteCell() {
+  if (!clipboard) return
+  const s = store.getState().selection; if (!s) return
+  const [startRow, startCol] = [s.row[0], s.column[0]]
+  clipboard.data.forEach(item => store.setCell(startRow + item.r, startCol + item.c, JSON.parse(JSON.stringify(item.cell))))
+  if (clipboard.isCut) {
+    const orig = clipboard.range
+    for (let r = orig.row[0]; r <= orig.row[1]; r++)
+      for (let c = orig.column[0]; c <= orig.column[1]; c++)
+        store.setCell(r, c, { v: null })
+    clipboard = null
+  }
+  store.getState() // triggers listeners indirectly
+  renderer && renderer.render()
+}
+
+// ============= 選取移動 =============
+function moveSelection(dRow, dCol) {
+  const s = store.getState().selection; if (!s) return
+  const sheet = store.getActiveSheet(); if (!sheet) return
+  const nr = Math.max(0, Math.min(sheet.row - 1, s.row[0] + dRow))
+  const nc = Math.max(0, Math.min(sheet.column - 1, s.column[0] + dCol))
+  store.setSelection({ row: [nr, nr], column: [nc, nc] })
+}
+
+// ============= 編輯器 =============
+function startEditing(row, col, initialKey) {
+  if (isEditing) finishEditing()
+  const cell = store.getCell(row, col)
+  const rect = renderer.getCellScreenRect(row, col)
+  if (!rect) return
+  isEditing = true
+  store.setEditingCell({ row, col })
+  editor = document.createElement('textarea')
+  editor.style.cssText = `position:absolute;left:${rect.x}px;top:${rect.y}px;width:${rect.w + 1}px;height:${rect.h + 1}px;box-sizing:border-box;border:2px solid #1a73e8;outline:none;resize:none;overflow:hidden;background:#fff;font-family:inherit;font-size:12px;padding:2px 4px;z-index:1000`
+  const cs = cell?.s || {}
+  if (cs.bl) editor.style.fontWeight = 'bold'
+  if (cs.it) editor.style.fontStyle = 'italic'
+  if (cs.fc) editor.style.color = cs.fc
+  if (cs.ht === 1) editor.style.textAlign = 'center'
+  else if (cs.ht === 2) editor.style.textAlign = 'right'
+  editor.value = initialKey !== undefined ? initialKey : (cell?.f || (cell?.v != null ? String(cell.v) : ''))
+  renderer.canvas.parentElement.appendChild(editor)
+  editor.focus()
+  if (initialKey === undefined) editor.select()
+  editor.addEventListener('mousedown', e => e.stopPropagation())
+  editor.addEventListener('dblclick', e => e.stopPropagation())
+}
+function finishEditing() {
+  if (!isEditing || !editor) return
+  const ec = store.getState().editingCell; if (!ec) return
+  const val = editor.value
+  const cell = store.getCell(ec.row, ec.col) || {}
+  if (val.startsWith('=')) { cell.f = val; cell.v = null }
+  else { delete cell.f; const num = Number(val); cell.v = (val !== '' && !isNaN(num)) ? num : val }
+  store.setCell(ec.row, ec.col, cell)
+  cancelEditing()
+}
+function cancelEditing() {
+  editor && editor.remove(); editor = null; isEditing = false; store.setEditingCell(null); renderer && renderer.render()
+}
+
+// ============= 凍結視窗 =============
+function applyFreeze(type) {
+  const s = store.getState().selection
+  if (type === 'none') {
+    currentFreezeRow = 0; currentFreezeCol = 0
+  } else if (type === 'row') {
+    currentFreezeRow = 1; currentFreezeCol = 0
+  } else if (type === 'col') {
+    currentFreezeRow = 0; currentFreezeCol = 1
+  } else if (type === 'both') {
+    const fr = s ? s.row[0] : 1
+    const fc = s ? s.column[0] : 1
+    currentFreezeRow = fr; currentFreezeCol = fc
+  }
+  store.setFrozen(currentFreezeRow, currentFreezeCol)
+  updateFreezeLines()
+}
+function updateFreezeLines() {
+  const lineH = document.getElementById('freeze-line-h')
+  const lineV = document.getElementById('freeze-line-v')
+  if (!renderer || !renderer.sheet) { lineH.style.display = 'none'; lineV.style.display = 'none'; return }
+  const { headerHeight, headerWidth } = renderer.cfg
+  if (currentFreezeRow > 0 && renderer.rowH) {
+    let y = 0
+    for (let r = 0; r < currentFreezeRow && r < renderer.rowH.length; r++) y += renderer.rowH[r]
+    if (y > 0) { lineH.style.display = 'block'; lineH.style.top = (headerHeight + y - renderer.scrollTop) + 'px' }
+    else lineH.style.display = 'none'
+  } else lineH.style.display = 'none'
+  if (currentFreezeCol > 0 && renderer.colW) {
+    let x = 0
+    for (let c = 0; c < currentFreezeCol && c < renderer.colW.length; c++) x += renderer.colW[c]
+    if (x > 0) { lineV.style.display = 'block'; lineV.style.left = (headerWidth + x - renderer.scrollLeft) + 'px' }
+    else lineV.style.display = 'none'
+  } else lineV.style.display = 'none'
+}
+
+// ============= 浮動圖片 =============
+function insertFloatImage(src, naturalW, naturalH, opts) {
+  const overlay = document.getElementById('image-overlay')
+  const offsetX = renderer ? renderer.cfg.headerWidth + 20 : 60
+  const offsetY = renderer ? renderer.cfg.headerHeight + 20 : 24
+
+  const MAX_SIZE = 400
+  let w, h
+  if (naturalW > naturalH) { w = Math.min(naturalW, MAX_SIZE); h = Math.round(naturalH * w / naturalW) }
+  else { h = Math.min(naturalH, MAX_SIZE); w = Math.round(naturalW * h / naturalH) }
+
+  const id = (opts && opts.id) ? opts.id : ('img_' + Date.now() + '_' + Math.floor(Math.random() * 1000))
+  const x = (opts && opts.x != null) ? opts.x : offsetX
+  const y = (opts && opts.y != null) ? opts.y : offsetY
+  const initW = (opts && opts.w != null) ? opts.w : w
+  const initH = (opts && opts.h != null) ? opts.h : h
+  const wrapper = document.createElement('div')
+  wrapper.className = 'float-img-wrapper'
+  wrapper.id = id
+  wrapper.style.cssText = `left:${x}px;top:${y}px;width:${initW}px;height:${initH}px`
+
+  const img = document.createElement('img')
+  img.src = src
+  img.draggable = false
+
+  // resize handles
+  const handles = ['nw','n','ne','e','se','s','sw','w']
+  handles.forEach(dir => {
+    const h2 = document.createElement('div')
+    h2.className = `img-resize-handle ${dir}`
+    h2.dataset.dir = dir
+    wrapper.appendChild(h2)
+  })
+
+  // delete button
+  const delBtn = document.createElement('button')
+  delBtn.className = 'img-delete-btn'
+  delBtn.innerHTML = '✕'
+  delBtn.title = '刪除圖片'
+  delBtn.onclick = e => { e.stopPropagation(); removeFloatImage(id) }
+
+  wrapper.appendChild(img)
+  wrapper.appendChild(delBtn)
+  overlay.appendChild(wrapper)
+
+  const imgData = { id, el: wrapper, src, x, y, w: initW, h: initH }
+  floatImages.push(imgData)
+  saveFloatImages()
+
+  // drag to move
+  let dragState = null
+  wrapper.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('img-resize-handle')) return
+    if (e.target === delBtn) return
+    if (isEditing) finishEditing()
+    selectFloatImg(id)
+    dragState = { startX: e.clientX, startY: e.clientY, origLeft: parseInt(wrapper.style.left), origTop: parseInt(wrapper.style.top) }
+    e.stopPropagation()
+    e.preventDefault()
+    const onMove = e2 => {
+      if (!dragState) return
+      const nx = dragState.origLeft + e2.clientX - dragState.startX
+      const ny = dragState.origTop  + e2.clientY - dragState.startY
+      wrapper.style.left = nx + 'px'
+      wrapper.style.top  = ny + 'px'
+      const data = floatImages.find(fi => fi.id === id)
+      if (data) { data.x = nx; data.y = ny }
+    }
+    const onUp = () => { saveFloatImages(); dragState = null; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  })
+
+  // resize
+  wrapper.querySelectorAll('.img-resize-handle').forEach(handle => {
+    handle.addEventListener('mousedown', e => {
+      e.stopPropagation(); e.preventDefault()
+      const dir = handle.dataset.dir
+      const startX = e.clientX, startY = e.clientY
+      const origL = parseInt(wrapper.style.left), origT = parseInt(wrapper.style.top)
+      const origW = wrapper.offsetWidth, origH = wrapper.offsetHeight
+      const onMove2 = e2 => {
+        const dx = e2.clientX - startX, dy = e2.clientY - startY
+        let nl = origL, nt = origT, nw = origW, nh = origH
+        if (dir.includes('e')) nw = Math.max(30, origW + dx)
+        if (dir.includes('s')) nh = Math.max(30, origH + dy)
+        if (dir.includes('w')) { nw = Math.max(30, origW - dx); nl = origL + origW - nw }
+        if (dir.includes('n')) { nh = Math.max(30, origH - dy); nt = origT + origH - nh }
+        wrapper.style.left = nl + 'px'; wrapper.style.top = nt + 'px'
+        wrapper.style.width = nw + 'px'; wrapper.style.height = nh + 'px'
+        const data = floatImages.find(fi => fi.id === id)
+        if (data) { data.x = nl; data.y = nt; data.w = nw; data.h = nh }
+      }
+      const onUp2 = () => { saveFloatImages(); document.removeEventListener('mousemove', onMove2); document.removeEventListener('mouseup', onUp2) }
+      document.addEventListener('mousemove', onMove2); document.addEventListener('mouseup', onUp2)
+    })
+  })
+
+  selectFloatImg(id)
+}
+
+function removeFloatImage(id) {
+  const el = document.getElementById(id)
+  if (el) el.remove()
+  floatImages = floatImages.filter(fi => fi.id !== id)
+  saveFloatImages()
+}
+
+function clearAllFloatImages() {
+  const overlay = document.getElementById('image-overlay')
+  if (overlay) overlay.querySelectorAll('.float-img-wrapper').forEach(el => el.remove())
+  floatImages = []
+}
+
+function renderFloatImages() {
+  clearAllFloatImages()
+  const sheet = store.getActiveSheet()
+  if (!sheet) return
+  const imgs = (sheet.config && sheet.config.floatImages) || []
+  imgs.forEach(img => {
+    insertFloatImage(img.src, img.w || 100, img.h || 100, { id: img.id, x: img.x, y: img.y, w: img.w, h: img.h })
+  })
+}
+
+function saveFloatImages() {
+  const sheet = store.getActiveSheet()
+  if (!sheet) return
+  if (!sheet.config) sheet.config = {}
+  sheet.config.floatImages = floatImages.map(fi => ({
+    id: fi.id, src: fi.src, x: fi.x, y: fi.y, w: fi.w, h: fi.h
+  }))
+}
+
+function selectFloatImg(id) {
+  document.querySelectorAll('.float-img-wrapper').forEach(el => el.classList.remove('selected'))
+  const el = document.getElementById(id)
+  if (el) el.classList.add('selected')
+}
+
+// Click on overlay background to deselect images
+document.getElementById('image-overlay').addEventListener('mousedown', e => {
+  if (e.target === e.currentTarget || e.target.id === 'freeze-line-h' || e.target.id === 'freeze-line-v') {
+    document.querySelectorAll('.float-img-wrapper').forEach(el => el.classList.remove('selected'))
+  }
+})
+
+// ============= 框線 =============
+function applyBorder(type) {
+  const s = store.getState().selection; if (!s) return
+  const style = document.getElementById('border-style-sel').value
+  const color = document.getElementById('border-color-sel').value
+  const borderVal = { style, color }
+
+  updateStyleInSelection((cellStyle, cell) => {
+    if (!cell.bd) cell.bd = {}
+    if (type === 'none') { delete cell.bd; return }
+    if (type === 'all' || type === 'top' || type === 'outer') cell.bd.t = borderVal
+    if (type === 'all' || type === 'bottom' || type === 'outer' || type === 'dbl-bottom' || type === 'thick-bottom' || type === 'top-bottom') cell.bd.b = borderVal
+    if (type === 'all' || type === 'left' || type === 'outer') cell.bd.l = borderVal
+    if (type === 'all' || type === 'right' || type === 'outer') cell.bd.r = borderVal
+    if (type === 'inner') { cell.bd.t = borderVal; cell.bd.b = borderVal; cell.bd.l = borderVal; cell.bd.r = borderVal }
+    if (type === 'thick-box') { const thick = { style: 'thick', color }; cell.bd.t = thick; cell.bd.b = thick; cell.bd.l = thick; cell.bd.r = thick }
+  })
+}
+
+// ============= 自動加總 =============
+function autoSum() {
+  const s = store.getState().selection; if (!s) return
+  const [rStart, rEnd] = s.row, [cStart, cEnd] = s.column
+  if (rStart === rEnd && cStart === cEnd) {
+    // single cell — look up, then left
+    let upRow = rStart - 1, count = 0
+    while (upRow >= 0 && store.getCell(upRow, cStart) && typeof store.getCell(upRow, cStart).v === 'number') { upRow--; count++ }
+    if (count > 0) {
+      store.setCell(rStart, cStart, { v: null, f: `=SUM(${colLetter(cStart)}${upRow + 2}:${colLetter(cStart)}${rStart})` }); return
+    }
+    let leftCol = cStart - 1; let lc = 0
+    while (leftCol >= 0 && store.getCell(rStart, leftCol) && typeof store.getCell(rStart, leftCol).v === 'number') { leftCol--; lc++ }
+    if (lc > 0) store.setCell(rStart, cStart, { v: null, f: `=SUM(${colLetter(leftCol + 1)}${rStart + 1}:${colLetter(cStart - 1)}${rStart + 1})` })
+  } else {
+    for (let c = cStart; c <= cEnd; c++)
+      store.setCell(rEnd + 1, c, { v: null, f: `=SUM(${colLetter(c)}${rStart + 1}:${colLetter(c)}${rEnd + 1})` })
+    store.setSelection({ row: [rEnd + 1, rEnd + 1], column: [cStart, cEnd] })
+  }
+}
+
+// ============= 列/欄操作 =============
+function insertRow(r) { store.insertRow(r) }
+function insertCol(c) { store.insertCol(c) }
+function deleteRow(r) { store.deleteRow(r) }
+function deleteCol(c) { store.deleteCol(c) }
+function mergeCells()   { const s = store.getState().selection; if (s) store.mergeCells(s) }
+function unmergeCells() { const s = store.getState().selection; if (s) store.unmergeCells(s) }
+function sortColumn(c, order) { store.sortColumn(c, order) }
+
+// ============= 自動篩選 =============
+function applyFilter() {
+  const s = store.getState().selection
+  if (!s) return
+  const sheet = store.getActiveSheet()
+  if (!sheet) return
+  const cellMap = new Map()
+  sheet.celldata.forEach(c => cellMap.set(c.r + ',' + c.c, c.v))
+  const values = []
+  const seen = new Set()
+  for (let r = s.row[0]; r <= s.row[1]; r++) {
+    const v = cellMap.get(r + ',' + s.column[0])?.v
+    const sv = v == null ? '(空白)' : String(v)
+    if (!seen.has(sv)) { seen.add(sv); values.push(sv) }
+  }
+  if (values.length === 0) { showSnackbar('選取範圍無資料可篩選'); return }
+  showFilterDialog(values, s)
+}
+
+function showFilterDialog(values, s) {
+  const items = values.map((v, i) =>
+    `<label style="display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer;border-radius:3px" onmouseover="this.style.background='#f0f4ff'" onmouseout="this.style.background=''">
+       <input type="checkbox" class="filter-cb" data-val="${escapeAttr(v)}" checked> <span>${escapeHtml(v)}</span>
+     </label>`).join('')
+  showDialog('自動篩選 - 選取要顯示的值',
+    `<div style="margin-bottom:8px;display:flex;gap:6px">
+       <button class="btn btn-tiny" onclick="document.querySelectorAll('.filter-cb').forEach(cb=>cb.checked=true)">全選</button>
+       <button class="btn btn-tiny" onclick="document.querySelectorAll('.filter-cb').forEach(cb=>cb.checked=false)">全不選</button>
+       <button class="btn btn-tiny" onclick="document.querySelectorAll('.filter-cb').forEach(cb=>{const n=cb.parentElement.parentElement.children.length;cb.checked=Math.random()<0.5})">反相</button>
+     </div>
+     <div id="filter-list" style="max-height:280px;overflow:auto;border:1px solid #e0e0e0;border-radius:4px;padding:4px">${items}</div>`,
+    `<button class="btn" onclick="hideDialog()">取消</button>
+     <button class="btn btn-primary" id="filter-apply">套用</button>`)
+  document.getElementById('filter-apply').onclick = () => {
+    const checked = Array.from(document.querySelectorAll('.filter-cb')).filter(cb => cb.checked).map(cb => cb.dataset.val)
+    if (checked.length === 0) { showSnackbar('至少要選一個值'); return }
+    const cellMap = new Map()
+    sheet.celldata.forEach(c => cellMap.set(c.r + ',' + c.c, c.v))
+    const hidden = {}
+    for (let r = s.row[0]; r <= s.row[1]; r++) {
+      const v = cellMap.get(r + ',' + s.column[0])?.v
+      const sv = v == null ? '(空白)' : String(v)
+      if (!checked.includes(sv)) hidden[r] = true
+    }
+    const prev = sheet.config.rowhidden ? { ...sheet.config.rowhidden } : {}
+    sheet.config.rowhidden = { ...prev, ...hidden }
+    if (renderer) { renderer.setSheet(sheet); updateFreezeLines() }
+    hideDialog()
+    showSnackbar(`已篩選: 隱藏 ${Object.keys(hidden).length} 列`)
+  }
+}
+
+function clearFilter() {
+  const sheet = store.getActiveSheet()
+  if (!sheet || !sheet.config.rowhidden || Object.keys(sheet.config.rowhidden).length === 0) {
+    showSnackbar('無套用中的篩選')
+    return
+  }
+  const count = Object.keys(sheet.config.rowhidden).length
+  delete sheet.config.rowhidden
+  if (renderer) { renderer.setSheet(sheet); updateFreezeLines() }
+  showSnackbar(`已清除篩選: 顯示 ${count} 列`)
+}
+
+// ============= 資料驗證 =============
+function applyDataValidation() {
+  const s = store.getState().selection
+  if (!s) return
+  const cur = (() => {
+    const sheet = store.getActiveSheet()
+    if (!sheet) return ''
+    const dv = sheet.config.dv?.[`${s.row[0]},${s.column[0]}`]
+    return dv?.values || ''
+  })()
+  const inp = prompt('輸入下拉式清單選項 (用逗號分隔,例: A,B,C):', cur)
+  if (inp == null) return
+  const vals = inp.split(',').map(v => v.trim()).filter(Boolean)
+  if (vals.length === 0) { showSnackbar('至少要 1 個選項'); return }
+  const sheet = store.getActiveSheet()
+  if (!sheet) return
+  if (!sheet.config.dv) sheet.config.dv = {}
+  sheet.config.dv[`${s.row[0]},${s.column[0]}`] = { type: 'list', values: vals.join(',') }
+  if (renderer) renderer.setSheet(sheet)
+  showSnackbar(`已設定資料驗證: ${vals.length} 個選項`)
+}
+
+// ============= 縮放 =============
+function setZoom(z) {
+  currentZoom = Math.max(0.5, Math.min(3.0, z))
+  document.getElementById('zoom-label').textContent = Math.round(currentZoom * 100) + '%'
+  if (renderer) { renderer.setZoom(currentZoom); renderFloatImages(); updateFreezeLines() }
+}
+
+// ============= 工作表 =============
+function addSheet() {
+  const data = store.getState().data
+  const idx = data.sheets.length
+  data.sheets.push({ name: `工作表${idx + 1}`, index: idx, row: 100, column: 26, celldata: [], config: { rowlen: {}, columnlen: {}, merge: {}, border: {}, floatImages: [] } })
+  store.setActiveSheet(idx)
+  updateSheetTabs()
+  renderFloatImages()
+}
+function updateSheetTabs() {
+  const tabs = document.getElementById('sheet-tabs')
+  const data = store.getState().data
+  const addBtn = document.getElementById('btn-add-sheet')
+  tabs.innerHTML = ''
+  data.sheets.forEach((sheet, i) => {
+    const tab = document.createElement('div')
+    tab.className = `sheet-tab ${i === data.activeSheetIndex ? 'active' : ''}`
+    tab.textContent = sheet.name
+    tab.draggable = true
+    tab.dataset.idx = i
+    tab.onclick = () => { store.setActiveSheet(i); currentFreezeRow = 0; currentFreezeCol = 0; updateSheetTabs(); updateFreezeLines(); renderFloatImages() }
+    tab.ondblclick = () => { const name = prompt('重新命名工作表:', sheet.name); if (name) { sheet.name = name; updateSheetTabs() } }
+    tab.addEventListener('contextmenu', e => { e.preventDefault(); if (confirm(`刪除工作表「${sheet.name}」？`)) { if (data.sheets.length > 1) { data.sheets.splice(i, 1); store.setActiveSheet(Math.min(i, data.sheets.length - 1)); updateSheetTabs(); renderFloatImages() } } })
+    tab.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move'; tab.style.opacity = '0.5' })
+    tab.addEventListener('dragend', () => { tab.style.opacity = '1'; tabs.querySelectorAll('.sheet-tab').forEach(t => t.classList.remove('drop-target')) })
+    tab.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; tab.classList.add('drop-target') })
+    tab.addEventListener('dragleave', () => tab.classList.remove('drop-target'))
+    tab.addEventListener('drop', e => {
+      e.preventDefault()
+      tab.classList.remove('drop-target')
+      const from = parseInt(e.dataTransfer.getData('text/plain'))
+      const to = parseInt(tab.dataset.idx)
+      if (isNaN(from) || isNaN(to) || from === to) return
+      store.moveSheet(from, to)
+      updateSheetTabs()
+      renderFloatImages()
+    })
+    tabs.appendChild(tab)
+  })
+  tabs.appendChild(addBtn)
+}
+
+// ============= UI 更新 =============
+function updateStatusBar() {
+  const s = store.getState().selection; if (!s) return
+  document.getElementById('status-cell').textContent = cellRef(s.row[0], s.column[0])
+  // Stats: count/sum/avg for numeric selection
+  const sheet = store.getActiveSheet(); if (!sheet) return
+  let nums = [], count = 0
+  for (let r = s.row[0]; r <= s.row[1]; r++) for (let c = s.column[0]; c <= s.column[1]; c++) {
+    const cell = store.getCell(r, c)
+    const v = cell?.v
+    if (v != null && v !== '') { count++; if (typeof v === 'number') nums.push(v) }
+  }
+  let stats = ''
+  if (nums.length > 1) {
+    const sum = nums.reduce((a, b) => a + b, 0)
+    stats = `計數: ${count}  加總: ${sum.toLocaleString()}  平均: ${(sum / nums.length).toFixed(2)}`
+  } else if (count > 0) stats = `計數: ${count}`
+  document.getElementById('status-stats').textContent = stats
+}
+function updateFormulaBar() {
+  const s = store.getState().selection; if (!s) return
+  const [r, c] = [s.row[0], s.column[0]]
+  document.getElementById('cell-address').value = cellRef(r, c)
+  const cell = store.getCell(r, c)
+  document.getElementById('formula-input').value = cell?.f || (cell?.v != null ? String(cell.v) : '')
+  // update toolbar state
+  const st = cell?.s || {}
+  document.getElementById('btn-bold').classList.toggle('active', st.bl === 1)
+  document.getElementById('btn-italic').classList.toggle('active', st.it === 1)
+  document.getElementById('btn-underline').classList.toggle('active', st.ul === 1)
+  document.getElementById('btn-strikethrough').classList.toggle('active', st.st === 1)
+  document.getElementById('btn-wrap').classList.toggle('active', st.tb === 2)
+  document.getElementById('btn-valign-top').classList.toggle('active', st.vt === 1)
+  document.getElementById('btn-valign-mid').classList.toggle('active', st.vt === 2)
+  document.getElementById('btn-valign-bot').classList.toggle('active', st.vt === 3)
+  const alignLeft = document.getElementById('btn-align-left')
+  const alignCenter = document.getElementById('btn-align-center')
+  const alignRight = document.getElementById('btn-align-right')
+  if (alignLeft)  alignLeft.classList.toggle('active',  st.ht === 0 || st.ht === undefined)
+  if (alignCenter) alignCenter.classList.toggle('active', st.ht === 1)
+  if (alignRight) alignRight.classList.toggle('active', st.ht === 2)
+  const fmtSel = document.getElementById('number-format')
+  if (fmtSel && cell?.ct?.fa) fmtSel.value = cell.ct.fa
+  else if (fmtSel) fmtSel.value = 'general'
+  if (st.ff) document.getElementById('font-family').value = st.ff
+  if (st.fs) document.getElementById('font-size').value = st.fs
+}
+function loadSheet() {
+  const state = store.getState()
+  if (state.data.sheets.length > 0) { syncFormula(); renderer.setSheet(state.data.sheets[state.activeSheetIndex]) }
+}
+function syncFormula() {
+  const sheet = store.getActiveSheet(); if (!sheet) return
+  formula.clear()
+  sheet.celldata.forEach(cell => formula.setCell(cell.r, cell.c, cell.v))
+}
+
+// ============= 對話框 =============
+let dialogConfirmCallback = null
+function showDialog(title, bodyHtml, footerHtml, confirmCb) {
+  document.getElementById('dialog-title').textContent = title
+  document.getElementById('dialog-body').innerHTML = bodyHtml
+  if (footerHtml !== undefined) document.getElementById('dialog-footer').innerHTML = footerHtml
+  dialogConfirmCallback = confirmCb || null
+  document.getElementById('dialog-overlay').style.display = 'flex'
+}
+function hideDialog() { document.getElementById('dialog-overlay').style.display = 'none' }
+
+let snackbarTimer = null
+function showSnackbar(msg, kind) {
+  let el = document.getElementById('snackbar')
+  if (!el) {
+    el = document.createElement('div')
+    el.id = 'snackbar'
+    el.style.cssText = 'position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#323232;color:#fff;padding:10px 18px;border-radius:4px;font-size:13px;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.2);opacity:0;transition:opacity 0.2s;pointer-events:none;max-width:480px'
+    document.body.appendChild(el)
+  }
+  el.textContent = msg
+  el.style.background = kind === 'error' ? '#d32f2f' : (kind === 'success' ? '#2e7d32' : '#323232')
+  el.style.opacity = '1'
+  if (snackbarTimer) clearTimeout(snackbarTimer)
+  snackbarTimer = setTimeout(() => { el.style.opacity = '0' }, 2400)
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
+function escapeAttr(s) { return escapeHtml(s) }
+
+// ============= 尋找與取代 =============
+function showFindDialog() {
+  showDialog('尋找與取代',
+    `<div class="find-bar"><label>尋找:</label><input type="text" id="find-input" placeholder="輸入搜尋文字"></div>
+     <div class="find-bar" style="margin-top:10px"><label>取代為:</label><input type="text" id="replace-input" placeholder="輸入取代文字"></div>
+     <div class="find-options">
+       <label><input type="checkbox" id="find-case"> 區分大小寫</label>
+       <label><input type="checkbox" id="find-regex"> 正規表達式</label>
+     </div>`,
+    `<button class="btn" id="dialog-cancel">關閉</button>
+     <button class="btn" id="btn-find-prev" onclick="doFind(-1)">上一個</button>
+     <button class="btn" id="btn-find-next" onclick="doFind(1)">下一個</button>
+     <button class="btn btn-primary" onclick="doReplace()">取代</button>
+     <button class="btn btn-primary" onclick="doReplaceAll()">全部取代</button>`
+  )
+  document.getElementById('find-input').focus()
+}
+let findResults = [], findIdx = 0
+function doFind(dir) {
+  const q = document.getElementById('find-input')?.value; if (!q) return
+  const caseSensitive = document.getElementById('find-case')?.checked
+  const useRegex = document.getElementById('find-regex')?.checked
+  const sheet = store.getActiveSheet(); if (!sheet) return
+  findResults = sheet.celldata.filter(cell => {
+    const val = String(cell.v?.v || '')
+    if (useRegex) { try { return new RegExp(q, caseSensitive ? '' : 'i').test(val) } catch (e) { return false } }
+    return caseSensitive ? val.includes(q) : val.toLowerCase().includes(q.toLowerCase())
+  })
+  if (findResults.length === 0) { showSnackbar('找不到', 'error'); return }
+  findIdx = Math.max(0, Math.min(findResults.length - 1, (findIdx + dir + findResults.length) % findResults.length))
+  const res = findResults[findIdx]
+  store.setSelection({ row: [res.r, res.r], column: [res.c, res.c] })
+}
+function doReplace() {
+  const q = document.getElementById('find-input')?.value; const rStr = document.getElementById('replace-input')?.value || ''
+  if (!q || !findResults.length) return
+  const res = findResults[findIdx]
+  const cell = store.getCell(res.r, res.c) || {}
+  cell.v = String(cell.v || '').replace(q, rStr)
+  store.setCell(res.r, res.c, cell)
+  doFind(1)
+}
+function doReplaceAll() {
+  const q = document.getElementById('find-input')?.value; const rStr = document.getElementById('replace-input')?.value || ''
+  if (!q) return
+  const sheet = store.getActiveSheet(); if (!sheet) return
+  let count = 0
+  sheet.celldata.forEach(cd => {
+    const val = String(cd.v?.v || '')
+    if (val.includes(q)) { if (!cd.v) cd.v = {}; cd.v.v = val.replaceAll(q, rStr); count++ }
+  })
+  showSnackbar(`已取代 ${count} 個`, 'success'); renderer && renderer.render()
+}
+
+// ============= 列高/欄寬 =============
+function showRowHeightDialog() {
+  const s = store.getState().selection; if (!s) return
+  showDialog('設定列高',
+    `<div class="find-bar"><label>列高 (像素):</label><input type="number" id="row-height-val" value="25" min="5" max="500"></div>`,
+    undefined,
+    () => {
+      const h = parseInt(document.getElementById('row-height-val').value)
+      if (!isNaN(h)) for (let r = s.row[0]; r <= s.row[1]; r++) store.setRowHeight(r, h)
+    }
+  )
+}
+function showColWidthDialog() {
+  const s = store.getState().selection; if (!s) return
+  showDialog('設定欄寬',
+    `<div class="find-bar"><label>欄寬 (像素):</label><input type="number" id="col-width-val" value="80" min="20" max="1000"></div>`,
+    undefined,
+    () => {
+      const w = parseInt(document.getElementById('col-width-val').value)
+      if (!isNaN(w)) for (let c = s.column[0]; c <= s.column[1]; c++) store.setColumnWidth(c, w)
+    }
+  )
+}
+
+// ============= 連結 / 註解 =============
+function insertLink() {
+  const s = store.getState().selection; if (!s) return
+  showDialog('插入超連結',
+    `<div class="find-bar"><label>URL:</label><input type="text" id="link-url" value="https://"></div>
+     <div class="find-bar" style="margin-top:8px"><label>顯示文字:</label><input type="text" id="link-text" placeholder="(選填，預設使用 URL)"></div>`,
+    undefined,
+    () => {
+      const url = document.getElementById('link-url').value; if (!url) return
+      const text = document.getElementById('link-text').value || url
+      const cell = store.getCell(s.row[0], s.column[0]) || {}
+      cell.l = { address: url }; cell.v = text
+      store.setCell(s.row[0], s.column[0], cell)
+    }
+  )
+}
+function addComment(r, c) {
+  showDialog('新增註解',
+    `<div class="find-bar"><label>註解內容:</label><textarea id="comment-text" style="width:100%;height:80px;padding:6px;border:1px solid #dadce0;border-radius:4px;font-size:12px;outline:none;resize:vertical;margin-top:4px"></textarea></div>`,
+    undefined,
+    () => {
+      const comment = document.getElementById('comment-text').value; if (!comment) return
+      const cell = store.getCell(r, c) || {}; cell.ps = { value: comment }; store.setCell(r, c, cell)
+    }
+  )
+}
+function showFunctionDialog() {
+  const s = store.getState().selection; if (!s) return
+  const fns = ['SUM','AVERAGE','COUNT','COUNTA','MAX','MIN','IF','VLOOKUP','HLOOKUP','INDEX','MATCH','SUMIF','COUNTIF','IFERROR','ROUND','ABS','INT','MOD','POWER','SQRT','LEN','LEFT','RIGHT','MID','TRIM','CONCAT','TEXT','DATE','TODAY','NOW','YEAR','MONTH','DAY']
+  showDialog('插入函數',
+    `<div class="find-bar"><label>選擇函數:</label>
+     <select id="func-sel" style="width:100%;height:28px;border:1px solid #dadce0;border-radius:4px;margin-top:4px;font-size:12px;padding:0 4px">
+       ${fns.map(f => `<option value="${f}">${f}</option>`).join('')}
+     </select></div>
+     <div id="func-desc" style="margin-top:10px;font-size:12px;color:#555;min-height:40px"></div>`,
+    undefined,
+    () => {
+      const fn = document.getElementById('func-sel').value
+      startEditing(s.row[0], s.column[0], `=${fn}(`)
+    }
+  )
+}
+function showShortcutsDialog() {
+  showDialog('鍵盤快速鍵',
+    `<table style="width:100%;border-collapse:collapse;font-size:12px">
+      ${[['Ctrl+Z','復原'],['Ctrl+Y','重做'],['Ctrl+C','複製'],['Ctrl+V','貼上'],['Ctrl+X','剪下'],['Ctrl+B','粗體'],['Ctrl+I','斜體'],['Ctrl+U','底線'],['Ctrl+H','尋找取代'],['Ctrl+K','插入連結'],['Ctrl+S','儲存'],['Ctrl+P','列印'],['Ctrl+A','全選'],['Ctrl+1','格式化儲存格'],['F2','編輯儲存格'],['Delete','清除內容'],['Esc','取消編輯'],['Enter','確認並移至下一列'],['Tab','確認並移至下一欄'],['↑↓←→','導航']].map(([k,v]) =>
+        `<tr><td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;font-weight:500;white-space:nowrap">${k}</td><td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#555">${v}</td></tr>`
+      ).join('')}
+    </table>`,
+    `<button class="btn btn-primary" onclick="hideDialog()">關閉</button>`
+  )
+}
+
+// ============= 顏色選擇器 =============
+const COLORS = [
+  '#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#d9d9d9','#efefef','#f3f3f3','#ffffff',
+  '#980000','#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#4a86e8','#0000ff','#9900ff','#ff00ff',
+  '#e6b8af','#f4cccc','#fce5cd','#fff2cc','#d9ead3','#d0e0e3','#c9daf8','#cfe2f3','#d9d2e9','#ead1dc',
+  '#dd7e6b','#ea9999','#f9cb9c','#ffe599','#b6d7a8','#a2c4c9','#a4c2f4','#9fc5e8','#b4a7d6','#d5a6bd',
+  '#cc4125','#e06666','#f6b26b','#ffd966','#93c47d','#76a5af','#6d9eeb','#6fa8dc','#8e7cc3','#c27ba0',
+  '#a61c00','#cc0000','#e69138','#f1c232','#6aa84f','#45818e','#3c78d8','#3d85c6','#674ea7','#a64d79',
+]
+function showColorPicker(anchorEl, target) {
+  document.getElementById('border-popup').style.display = 'none'
+  document.getElementById('freeze-popup').style.display = 'none'
+  const old = document.getElementById('color-picker-popup'); if (old) { old.remove(); return }
+  const popup = document.createElement('div')
+  popup.id = 'color-picker-popup'
+  popup.className = 'color-picker-popup'
+  const rect = anchorEl.getBoundingClientRect()
+  popup.style.left = rect.left + 'px'; popup.style.top = (rect.bottom + 4) + 'px'
+  popup.innerHTML = `
+    <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:6px">${target === 'text' ? '文字色彩' : '填滿色彩'}</div>
+    <div class="color-grid">${COLORS.map(c => `<div class="color-swatch" style="background:${c}" title="${c}" onclick="applyColor('${c}','${target}')"></div>`).join('')}</div>
+    <div class="color-custom-row">
+      <button class="color-none-btn" onclick="applyColor('transparent','${target}')">清除</button>
+      <input type="color" id="color-custom-input" value="${target === 'text' ? currentTextColor : (currentBgColor === 'transparent' ? '#ffffff' : currentBgColor)}" oninput="applyColor(this.value,'${target}')">
+      <span style="font-size:11px;color:#555">自訂</span>
+    </div>`
+  document.body.appendChild(popup)
+  setTimeout(() => {
+    document.addEventListener('click', function closePopup(ev) {
+      if (!popup.contains(ev.target) && ev.target !== anchorEl) { popup.remove(); document.removeEventListener('click', closePopup) }
+    })
+  }, 100)
+}
+function applyColor(color, target) {
+  if (target === 'text') setTextColor(color)
+  else setBgColor(color)
+  document.getElementById('color-picker-popup')?.remove()
+}
+
+// ============= 框線 popup =============
+function showBorderPopup(anchorEl) {
+  const popup = document.getElementById('border-popup')
+  const rect = anchorEl.getBoundingClientRect()
+  if (popup.style.display === 'block') { popup.style.display = 'none'; return }
+  popup.style.left = rect.left + 'px'; popup.style.top = (rect.bottom + 4) + 'px'; popup.style.display = 'block'
+}
+
+// ============= 凍結 popup =============
+function showFreezePopup(anchorEl) {
+  const popup = document.getElementById('freeze-popup')
+  const rect = anchorEl.getBoundingClientRect()
+  if (popup.style.display === 'block') { popup.style.display = 'none'; return }
+  popup.style.left = rect.left + 'px'; popup.style.top = (rect.bottom + 4) + 'px'; popup.style.display = 'block'
+}
+
+// ============= 合併 popup =============
+function showMergePopup(anchorEl) {
+  const popup = document.getElementById('merge-popup')
+  const rect = anchorEl.getBoundingClientRect()
+  if (popup.style.display === 'block') { popup.style.display = 'none'; return }
+  popup.style.left = rect.left + 'px'; popup.style.top = (rect.bottom + 4) + 'px'; popup.style.display = 'block'
+}
+function hideAllPopups() {
+  document.getElementById('border-popup').style.display = 'none'
+  document.getElementById('freeze-popup').style.display = 'none'
+  document.getElementById('merge-popup').style.display = 'none'
+}
+
+// ============= 檔案操作 =============
+// ============= 檔案操作 =============
+
+// ---------- XLSX 匯入 ----------
+function importXlsx() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.xlsx,.xls,.xlsm,.xlsb,.ods,.csv'
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      try {
+        const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellStyles: true, cellFormula: true, cellNF: true })
+        const sheetsData = wb.SheetNames.map((name, idx) => {
+          const ws = wb.Sheets[name]
+          const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1')
+          const rows = range.e.r + 2
+          const cols = range.e.c + 2
+          const celldata = []
+          const merges = []
+
+          // Parse merges
+          if (ws['!merges']) {
+            ws['!merges'].forEach(m => {
+              merges[`${m.s.r},${m.s.c}`] = { r: m.s.r, c: m.s.c, rs: m.e.r - m.s.r + 1, cs: m.e.c - m.s.c + 1 }
+            })
+          }
+
+          // Parse cells
+          for (let r = range.s.r; r <= range.e.r; r++) {
+            for (let c = range.s.c; c <= range.e.c; c++) {
+              const addr = XLSX.utils.encode_cell({ r, c })
+              const cell = ws[addr]
+              if (!cell) continue
+              const cv = {}
+              // Value
+              if (cell.t === 'n') cv.v = cell.v
+              else if (cell.t === 'b') cv.v = cell.v
+              else if (cell.t === 's' || cell.t === 'str') cv.v = cell.v || ''
+              else cv.v = cell.v !== undefined ? cell.v : ''
+              // Formula
+              if (cell.f) cv.f = '=' + cell.f
+              // Number format
+              if (cell.z && cell.z !== 'General') cv.ct = { t: 'n', fa: cell.z }
+              // Styles (basic)
+              if (cell.s) {
+                const s = {}
+                if (cell.s.font) {
+                  if (cell.s.font.bold) s.bl = 1
+                  if (cell.s.font.italic) s.it = 1
+                  if (cell.s.font.underline) s.ul = 1
+                  if (cell.s.font.strike) s.st = 1
+                  if (cell.s.font.sz) s.fs = cell.s.font.sz
+                  if (cell.s.font.color && cell.s.font.color.rgb) s.fc = '#' + cell.s.font.color.rgb.slice(-6)
+                  if (cell.s.font.name) s.ff = cell.s.font.name
+                }
+                if (cell.s.fill && cell.s.fill.fgColor && cell.s.fill.fgColor.rgb) {
+                  const bg = cell.s.fill.fgColor.rgb
+                  if (bg !== 'FF000000' && bg !== '00000000') s.bc = '#' + bg.slice(-6)
+                }
+                if (cell.s.alignment) {
+                  const al = cell.s.alignment
+                  if (al.horizontal === 'center') s.ht = 1
+                  else if (al.horizontal === 'right') s.ht = 2
+                  if (al.vertical === 'top') s.vt = 1
+                  else if (al.vertical === 'center') s.vt = 2
+                  else if (al.vertical === 'bottom') s.vt = 3
+                  if (al.wrapText) s.tb = 2
+                }
+                if (Object.keys(s).length > 0) cv.s = s
+              }
+              celldata.push({ r, c, v: cv })
+            }
+          }
+
+          // Column widths (SheetJS stores in chars, ~7px per char)
+          const columnlen = {}
+          if (ws['!cols']) ws['!cols'].forEach((col, i) => { if (col && col.wch) columnlen[i] = Math.round(col.wch * 7) })
+          // Row heights
+          const rowlen = {}
+          if (ws['!rows']) ws['!rows'].forEach((row, i) => { if (row && row.hpt) rowlen[i] = Math.round(row.hpt * 1.33) })
+
+          return {
+            name, index: idx, row: Math.max(rows, 100), column: Math.max(cols, 26),
+            celldata,
+            config: { rowlen, columnlen, merge: merges, border: {} }
+          }
+        })
+
+        store.loadData({ sheets: sheetsData, activeSheetIndex: 0 })
+        updateSheetTabs()
+        document.getElementById('status-mode').textContent = `已載入: ${file.name}`
+      } catch (err) {
+        console.error(err)
+        showSnackbar('xlsx 匯入失敗: ' + err.message, 'error')
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }
+  input.click()
+}
+
+// ---------- XLSX 匯出 ----------
+function exportXlsx() {
+  try {
+    const data = store.getState().data
+    const wb = XLSX.utils.book_new()
+
+    data.sheets.forEach(sheet => {
+      // Build 2D array for cells
+      let maxR = 0, maxC = 0
+      const cellMap = new Map()
+      sheet.celldata.forEach(cd => {
+        cellMap.set(`${cd.r},${cd.c}`, cd.v)
+        if (cd.r > maxR) maxR = cd.r
+        if (cd.c > maxC) maxC = cd.c
+      })
+
+      const ws = {}
+      let hasData = false
+
+      for (let r = 0; r <= maxR; r++) {
+        for (let c = 0; c <= maxC; c++) {
+          const cv = cellMap.get(`${r},${c}`)
+          if (!cv && cv !== 0) continue
+          const addr = XLSX.utils.encode_cell({ r, c })
+          const xlCell = {}
+
+          // Value & type
+          const v = cv.v
+          if (cv.f) {
+            xlCell.f = cv.f.startsWith('=') ? cv.f.slice(1) : cv.f
+            xlCell.t = 'n'
+            xlCell.v = typeof v === 'number' ? v : 0
+          } else if (typeof v === 'number') {
+            xlCell.v = v; xlCell.t = 'n'
+          } else if (typeof v === 'boolean') {
+            xlCell.v = v; xlCell.t = 'b'
+          } else if (v != null && v !== '') {
+            xlCell.v = String(v); xlCell.t = 's'
+          } else continue
+
+          // Number format
+          if (cv.ct && cv.ct.fa) xlCell.z = cv.ct.fa
+
+          // Styles
+          if (cv.s) {
+            const s = cv.s
+            xlCell.s = {}
+            if (s.bl || s.it || s.ul || s.st || s.fs || s.fc || s.ff) {
+              xlCell.s.font = {}
+              if (s.bl) xlCell.s.font.bold = true
+              if (s.it) xlCell.s.font.italic = true
+              if (s.ul) xlCell.s.font.underline = true
+              if (s.st) xlCell.s.font.strike = true
+              if (s.fs) xlCell.s.font.sz = s.fs
+              if (s.fc) xlCell.s.font.color = { rgb: 'FF' + s.fc.replace('#','').padStart(6,'0') }
+              if (s.ff) xlCell.s.font.name = s.ff
+            }
+            if (s.bc && s.bc !== 'transparent') {
+              xlCell.s.fill = { patternType: 'solid', fgColor: { rgb: 'FF' + s.bc.replace('#','').padStart(6,'0') } }
+            }
+            if (s.ht !== undefined || s.vt !== undefined || s.tb !== undefined) {
+              xlCell.s.alignment = {}
+              if (s.ht === 1) xlCell.s.alignment.horizontal = 'center'
+              else if (s.ht === 2) xlCell.s.alignment.horizontal = 'right'
+              if (s.vt === 1) xlCell.s.alignment.vertical = 'top'
+              else if (s.vt === 2) xlCell.s.alignment.vertical = 'center'
+              else if (s.vt === 3) xlCell.s.alignment.vertical = 'bottom'
+              if (s.tb === 2) xlCell.s.alignment.wrapText = true
+            }
+          }
+
+          ws[addr] = xlCell
+          hasData = true
+        }
+      }
+
+      if (!hasData) {
+        ws['A1'] = { v: '', t: 's' }
+        maxR = 0; maxC = 0
+      }
+
+      ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxR, c: maxC } })
+
+      // Column widths
+      if (sheet.config.columnlen) {
+        const cols = []
+        Object.entries(sheet.config.columnlen).forEach(([ci, w]) => { cols[parseInt(ci)] = { wch: Math.round(w / 7) } })
+        ws['!cols'] = cols
+      }
+      // Row heights
+      if (sheet.config.rowlen) {
+        const rows = []
+        Object.entries(sheet.config.rowlen).forEach(([ri, h]) => { rows[parseInt(ri)] = { hpt: Math.round(h / 1.33) } })
+        ws['!rows'] = rows
+      }
+      // Merges
+      if (sheet.config.merge) {
+        ws['!merges'] = Object.values(sheet.config.merge).map(m => ({
+          s: { r: m.r, c: m.c }, e: { r: m.r + m.rs - 1, c: m.c + m.cs - 1 }
+        }))
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, sheet.name)
+    })
+
+    XLSX.writeFile(wb, 'litesheet.xlsx', { bookType: 'xlsx', type: 'binary' })
+    document.getElementById('status-mode').textContent = '已匯出 xlsx'
+  } catch (err) {
+    console.error(err)
+    showSnackbar('xlsx 匯出失敗: ' + err.message, 'error')
+  }
+}
+
+// ---------- JSON 格式 (備份) ----------
+function openFile() {
+  const input = document.createElement('input'); input.type = 'file'; input.accept = '.json'
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => { try { store.loadData(JSON.parse(ev.target.result)); updateSheetTabs(); document.getElementById('status-mode').textContent = `已載入: ${file.name}`; showSnackbar(`已載入: ${file.name}`, 'success') } catch (err) { showSnackbar('json 格式錯誤', 'error') } }
+    reader.readAsText(file)
+  }; input.click()
+}
+function saveToFile() {
+  const data = store.getState().data
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'litesheet.json'; a.click()
+}
+function exportCsv() {
+  const sheet = store.getActiveSheet(); if (!sheet) return
+  let csv = ''
+  const cellMap = new Map(); sheet.celldata.forEach(cell => cellMap.set(`${cell.r},${cell.c}`, cell))
+  for (let r = 0; r < sheet.row; r++) {
+    const row = []
+    for (let c = 0; c < Math.min(sheet.column, 26); c++) {
+      const cell = cellMap.get(`${r},${c}`); const v = String(cell?.v?.v ?? '')
+      row.push(v.includes(',') || v.includes('"') ? `"${v.replace(/"/g,'""')}"` : v)
+    }
+    csv += row.join(',') + '\n'
+  }
+  // Trim trailing empty rows
+  const trimmed = csv.replace(/(,+\n)+$/, '')
+  const blob = new Blob(['\ufeff' + trimmed], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'litesheet.csv'; a.click()
+}
+
+// ============= 選取框右鍵顯示 =============
+function showContextMenu(x, y) {
+  const menu = document.getElementById('context-menu'); menu.style.display = 'block'
+  // Adjust so it doesn't go off screen
+  const maxX = window.innerWidth - menu.offsetWidth - 8
+  const maxY = window.innerHeight - menu.offsetHeight - 8
+  menu.style.left = Math.min(x, maxX) + 'px'; menu.style.top = Math.min(y, maxY) + 'px'
+}
+function hideContextMenu() { document.getElementById('context-menu').style.display = 'none' }
+
+// ============= 初始化 =============
+function init() {
+  const canvas = document.createElement('canvas')
+  canvas.style.cssText = 'width:100%;height:100%;display:block'
+  document.getElementById('spreadsheet').appendChild(canvas)
+  renderer = new CanvasRenderer(canvas)
+  renderer.setFormulaEngine(formula)
+  setupStore()
+  setupEvents(canvas)
+  setupMenubar()
+  setupToolbar()
+  setupContextMenu()
+  setupFormulaBar()
+  setupBorderPopup()
+  setupFreezePopup()
+  setupMergePopup()
+  loadSheet()
+  updateSheetTabs()
+}
+
+let lastSheetIndex = -1
+function setupStore() {
+  store.subscribe(state => {
+    const sheet = state.data.sheets[state.activeSheetIndex]
+    if (sheet) { syncFormula(); renderer.setSheet(sheet) }
+    renderer.setSelections(state.selections || [])
+    updateStatusBar()
+    updateFormulaBar()
+    updateFreezeLines()
+    if (state.activeSheetIndex !== lastSheetIndex) {
+      lastSheetIndex = state.activeSheetIndex
+      renderFloatImages()
+    }
+  })
+}
+
+function setupEvents(canvas) {
+  let resizeState = null, dragState = null, isMouseDown = false
+  let isFilling = false, sourceSelection = null, fillStartRow = null, fillStartCol = null
+  let anchorCell = null
+
+  canvas.addEventListener('mousedown', e => {
+    if (!renderer.sheet) return
+    hideAllPopups()
+    if (isEditing) finishEditing()
+    const rect = canvas.getBoundingClientRect()
+    const px = e.clientX - rect.left, py = e.clientY - rect.top
+    if (e.button === 2) {
+      const cell = renderer.getCellAt(px, py)
+      if (cell) {
+        const sels = store.getState().selections || []
+        const inside = sels.some(s => cell.row >= s.row[0] && cell.row <= s.row[1] && cell.col >= s.column[0] && cell.col <= s.column[1])
+        if (!inside) { anchorCell = { row: cell.row, col: cell.col }; store.setSelection({ row: [cell.row, cell.row], column: [cell.col, cell.col] }) }
+      }
+      return
+    }
+    if (e.ctrlKey || e.metaKey) {
+      const cell = renderer.getCellAt(px, py)
+      if (cell) {
+        isMouseDown = true
+        const currentSels = [...(store.getState().selections || [])]
+        const targetSel = { row: [cell.row, cell.row], column: [cell.col, cell.col] }
+        const idx = currentSels.findIndex(s => s.row[0] === cell.row && s.row[1] === cell.row && s.column[0] === cell.col && s.column[1] === cell.col)
+        if (idx >= 0) {
+          currentSels.splice(idx, 1)
+        } else {
+          currentSels.push(targetSel)
+        }
+        if (currentSels.length === 0) {
+          store.setSelection(targetSel)
+        } else {
+          store.setSelections(currentSels)
+        }
+        anchorCell = { row: cell.row, col: cell.col }
+        dragState = { startRow: cell.row, startCol: cell.col }
+      }
+      return
+    }
+    isMouseDown = true
+    if (renderer.isOverFillHandle(px, py)) {
+      isFilling = true; sourceSelection = JSON.parse(JSON.stringify(store.getState().selection))
+      fillStartRow = sourceSelection.row[1]; fillStartCol = sourceSelection.column[1]
+      e.preventDefault(); return
+    }
+    const resizeTarget = renderer.getResizeTarget(px, py)
+    if (resizeTarget) {
+      resizeState = { type: resizeTarget.type, index: resizeTarget.index, startX: e.clientX, startY: e.clientY, startVal: resizeTarget.startVal }
+      e.preventDefault(); return
+    }
+    const header = renderer.getHeaderAt(px, py)
+    if (header) {
+      const sheet = store.getActiveSheet(); if (!sheet) return
+      if (header.type === 'col') store.setSelection({ row: [0, sheet.row - 1], column: [header.index, header.index] })
+      else if (header.type === 'row') store.setSelection({ row: [header.index, header.index], column: [0, sheet.column - 1] })
+      else store.setSelection({ row: [0, sheet.row - 1], column: [0, sheet.column - 1] })
+      return
+    }
+    const cell = renderer.getCellAt(px, py)
+    if (cell) {
+      if (e.shiftKey) {
+        const sels = store.getState().selections || []
+        const s = sels.length > 0 ? sels[sels.length - 1] : null
+        const startRow = anchorCell ? anchorCell.row : (s ? s.row[0] : cell.row)
+        const startCol = anchorCell ? anchorCell.col : (s ? s.column[0] : cell.col)
+        const range = { row: [Math.min(startRow, cell.row), Math.max(startRow, cell.row)], column: [Math.min(startCol, cell.col), Math.max(startCol, cell.col)] }
+        if (sels.length > 1) {
+          const newSels = [...sels.slice(0, -1), range]
+          store.setSelections(newSels)
+        } else {
+          store.setSelection(range)
+        }
+        dragState = { startRow, startCol }
+      } else {
+        anchorCell = { row: cell.row, col: cell.col }
+        store.setSelection({ row: [cell.row, cell.row], column: [cell.col, cell.col] })
+        dragState = { startRow: cell.row, startCol: cell.col }
+      }
+    }
+  })
+
+  canvas.addEventListener('mousemove', e => {
+    if (!renderer.sheet) return
+    const rect = canvas.getBoundingClientRect()
+    const px = e.clientX - rect.left, py = e.clientY - rect.top
+    if (isFilling && isMouseDown && sourceSelection) {
+      const cell = renderer.getCellAt(px, py)
+      if (cell) {
+        const rowDiff = Math.abs(cell.row - fillStartRow), colDiff = Math.abs(cell.col - fillStartCol)
+        if (rowDiff > colDiff) store.setSelection({ row: [Math.min(sourceSelection.row[0], cell.row), Math.max(sourceSelection.row[1], cell.row)], column: [sourceSelection.column[0], sourceSelection.column[1]] })
+        else store.setSelection({ row: [sourceSelection.row[0], sourceSelection.row[1]], column: [Math.min(sourceSelection.column[0], cell.col), Math.max(sourceSelection.column[1], cell.col)] })
+      }
+      return
+    }
+    if (resizeState) {
+      if (resizeState.type === 'col') store.setColumnWidth(resizeState.index, Math.max(30, resizeState.startVal + e.clientX - resizeState.startX), false)
+      else store.setRowHeight(resizeState.index, Math.max(15, resizeState.startVal + e.clientY - resizeState.startY), false)
+      return
+    }
+    if (dragState && isMouseDown) {
+      const cell = renderer.getCellAt(px, py)
+      if (cell) {
+        const currentSels = [...(store.getState().selections || [])]
+        if (currentSels.length > 0) {
+          const lastIdx = currentSels.length - 1
+          currentSels[lastIdx] = { row: [Math.min(dragState.startRow, cell.row), Math.max(dragState.startRow, cell.row)], column: [Math.min(dragState.startCol, cell.col), Math.max(dragState.startCol, cell.col)] }
+          store.setSelections(currentSels)
+        }
+      }
+      return
+    }
+    const resizeTarget = renderer.getResizeTarget(px, py)
+    if (resizeTarget) canvas.style.cursor = resizeTarget.type === 'col' ? 'col-resize' : 'row-resize'
+    else if (renderer.isOverFillHandle(px, py)) canvas.style.cursor = 'crosshair'
+    else canvas.style.cursor = 'default'
+  })
+
+  document.addEventListener('mouseup', () => {
+    if (isFilling && sourceSelection) { store.fillRange(sourceSelection, store.getState().selection); isFilling = false; sourceSelection = null }
+    if (resizeState) {
+      const sheet = store.getActiveSheet()
+      if (resizeState.type === 'col') store.setColumnWidth(resizeState.index, sheet.config.columnlen?.[resizeState.index] ?? 73, true)
+      else store.setRowHeight(resizeState.index, sheet.config.rowlen?.[resizeState.index] ?? 20, true)
+    }
+    resizeState = null; dragState = null; isMouseDown = false
+  })
+
+  canvas.addEventListener('dblclick', e => {
+    const r = canvas.getBoundingClientRect()
+    const px = e.clientX - r.left, py = e.clientY - r.top
+    const resizeTarget = renderer.getResizeTarget(px, py)
+    if (resizeTarget) {
+      if (resizeTarget.type === 'col') {
+        const w = renderer.measureColumnWidth(resizeTarget.index)
+        store.setColumnWidth(resizeTarget.index, w)
+        showSnackbar(`欄 ${colLetter(resizeTarget.index)} 已自動調整為 ${Math.round(w)}px`, 'success')
+      } else {
+        const h = renderer.measureRowHeight(resizeTarget.index)
+        store.setRowHeight(resizeTarget.index, h)
+        showSnackbar(`列 ${resizeTarget.index + 1} 已自動調整為 ${Math.round(h)}px`, 'success')
+      }
+      return
+    }
+    const cell = renderer.getCellAt(px, py)
+    if (cell) startEditing(cell.row, cell.col)
+  })
+  canvas.addEventListener('contextmenu', e => {
+    e.preventDefault(); hideAllPopups()
+    const r = canvas.getBoundingClientRect()
+    const cell = renderer.getCellAt(e.clientX - r.left, e.clientY - r.top)
+    if (cell) {
+      const s = store.getState().selection
+      const inside = s && cell.row >= s.row[0] && cell.row <= s.row[1] && cell.col >= s.column[0] && cell.col <= s.column[1]
+      if (!inside) { anchorCell = { row: cell.row, col: cell.col }; store.setSelection({ row: [cell.row, cell.row], column: [cell.col, cell.col] }) }
+      showContextMenu(e.clientX, e.clientY)
+    }
+  })
+  canvas.addEventListener('wheel', e => { e.preventDefault(); renderer.setScroll(Math.max(0, renderer.scrollTop + e.deltaY), Math.max(0, renderer.scrollLeft + e.deltaX)); updateFreezeLines() })
+  window.addEventListener('resize', () => renderer.resize())
+
+  document.addEventListener('keydown', e => {
+    if (isEditing) {
+      if (e.key === 'Escape') cancelEditing()
+      else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finishEditing() }
+      else if (e.key === 'Tab') { e.preventDefault(); finishEditing(); moveSelection(0, e.shiftKey ? -1 : 1) }
+      return
+    }
+    if (e.ctrlKey || e.metaKey) {
+      switch (e.key.toLowerCase()) {
+        case 'z': e.preventDefault(); store.undo(); break
+        case 'y': e.preventDefault(); store.redo(); break
+        case 'c': copyCell(); break
+        case 'x': cutCell(); break
+        case 'v': pasteCell(); break
+        case 'b': e.preventDefault(); toggleBold(); break
+        case 'i': e.preventDefault(); toggleItalic(); break
+        case 'u': e.preventDefault(); toggleUnderline(); break
+        case 'h': e.preventDefault(); showFindDialog(); break
+        case 'k': e.preventDefault(); insertLink(); break
+        case 's': e.preventDefault(); saveToFile(); break
+        case 'p': e.preventDefault(); window.print(); break
+        case 'a': e.preventDefault(); { const sheet = store.getActiveSheet(); if (sheet) store.setSelection({ row: [0, sheet.row - 1], column: [0, sheet.column - 1] }) }; break
+        case '1': e.preventDefault(); showColWidthDialog(); break
+        case 'n': e.preventDefault(); if (confirm('新建活頁簿將清除目前資料，是否繼續？')) store.loadData({ sheets: [{ name: '工作表1', index: 0, row: 100, column: 26, celldata: [], config: {} }], activeSheetIndex: 0 }); break
+        case 'o': e.preventDefault(); openFile(); break
+      }
+      return
+    }
+    const s = store.getState().selection; if (!s) return
+    const [r, c] = [s.row[0], s.column[0]]
+    switch (e.key) {
+      case 'ArrowUp': e.preventDefault(); moveSelection(-1, 0); break
+      case 'ArrowDown': e.preventDefault(); moveSelection(1, 0); break
+      case 'ArrowLeft': e.preventDefault(); moveSelection(0, -1); break
+      case 'ArrowRight': e.preventDefault(); moveSelection(0, 1); break
+      case 'Tab': e.preventDefault(); moveSelection(0, e.shiftKey ? -1 : 1); break
+      case 'Enter': e.preventDefault(); moveSelection(e.shiftKey ? -1 : 1, 0); break
+      case 'Delete': case 'Backspace':
+        e.preventDefault()
+        { const sels = store.getState().selections || []; const target = sels.length > 0 ? sels[sels.length - 1] : s; store.clearRange(target) }
+        break
+      case 'F2': startEditing(r, c); break
+      default: if (e.key.length === 1) { e.preventDefault(); startEditing(r, c, e.key) }
+    }
+  })
+
+  document.addEventListener('click', e => {
+    if (isEditing && editor && !editor.contains(e.target)) finishEditing()
+    if (!e.target.closest('.context-menu')) hideContextMenu()
+    if (!e.target.closest('.border-popup') && e.target.id !== 'btn-border') document.getElementById('border-popup').style.display = 'none'
+    if (!e.target.closest('.freeze-popup') && e.target.id !== 'btn-freeze') document.getElementById('freeze-popup').style.display = 'none'
+    if (!e.target.closest('.merge-popup') && e.target.id !== 'btn-merge-menu') document.getElementById('merge-popup').style.display = 'none'
+  })
+
+  document.getElementById('dialog-close').onclick = hideDialog
+  document.getElementById('dialog-cancel').onclick = hideDialog
+  document.getElementById('dialog-confirm').onclick = () => { dialogConfirmCallback && dialogConfirmCallback(); hideDialog() }
+}
+
+function setupMenubar() {
+  document.querySelectorAll('.menu-dropdown-item[data-action]').forEach(item => {
+    item.addEventListener('click', e => {
+      e.stopPropagation()
+      const action = item.dataset.action, s = store.getState().selection
+      const [r, c] = s ? [s.row[0], s.column[0]] : [0, 0]
+      switch (action) {
+        case 'new': if (confirm('新建活頁簿將清除目前資料，是否繼續？')) store.loadData({ sheets: [{ name: '工作表1', index: 0, row: 100, column: 26, celldata: [], config: {} }], activeSheetIndex: 0 }); break
+        case 'open-xlsx': importXlsx(); break
+        case 'open': openFile(); break
+        case 'save-xlsx': exportXlsx(); break
+        case 'save': saveToFile(); break
+        case 'export-csv': exportCsv(); break
+        case 'print': window.print(); break
+        case 'undo': store.undo(); break
+        case 'redo': store.redo(); break
+        case 'cut': cutCell(); break
+        case 'copy': copyCell(); break
+        case 'paste': pasteCell(); break
+        case 'find': showFindDialog(); break
+        case 'select-all': { const sheet = store.getActiveSheet(); if (sheet) store.setSelection({ row: [0, sheet.row - 1], column: [0, sheet.column - 1] }) }; break
+        case 'insert-row': if (s) insertRow(r); break
+        case 'insert-col': if (s) insertCol(c); break
+        case 'insert-sheet': addSheet(); break
+        case 'insert-image-menu': document.getElementById('image-uploader').click(); break
+        case 'insert-link': insertLink(); break
+        case 'insert-comment': if (s) addComment(r, c); break
+        case 'insert-function': showFunctionDialog(); break
+        case 'insert-checkbox': if (s) store.setCell(r, c, { v: false, ct: { t: 'b' } }); break
+        case 'format-bold': toggleBold(); break
+        case 'format-italic': toggleItalic(); break
+        case 'format-underline': toggleUnderline(); break
+        case 'align-left': setAlignment(0); break
+        case 'align-center': setAlignment(1); break
+        case 'align-right': setAlignment(2); break
+        case 'merge': mergeCells(); break
+        case 'unmerge': unmergeCells(); break
+        case 'row-height': showRowHeightDialog(); break
+        case 'col-width': showColWidthDialog(); break
+        case 'format-cells': showColWidthDialog(); break
+        case 'sort-asc': if (s) sortColumn(c, 'asc'); break
+        case 'sort-desc': if (s) sortColumn(c, 'desc'); break
+        case 'filter': applyFilter(); break
+        case 'clear-filter': clearFilter(); break
+        case 'data-validation': applyDataValidation(); break
+        case 'freeze-row': applyFreeze('row'); break
+        case 'freeze-col': applyFreeze('col'); break
+        case 'freeze-both': applyFreeze('both'); break
+        case 'freeze-none': applyFreeze('none'); break
+        case 'zoom-in': setZoom(currentZoom + 0.1); break
+        case 'zoom-out': setZoom(currentZoom - 0.1); break
+        case 'zoom-reset': setZoom(1.0); break
+        case 'shortcuts': showShortcutsDialog(); break
+        case 'about': showDialog('關於 LiteSheet', '<p style="font-size:13px;line-height:1.8;color:#555">LiteSheet v2.0<br><br>基於 Luckysheet 架構製作的輕量試算表<br>感謝 Luckysheet 團隊的開源貢獻</p>', `<button class="btn btn-primary" onclick="hideDialog()">確定</button>`); break
+      }
+    })
+  })
+}
+
+function setupContextMenu() {
+  document.querySelectorAll('.context-menu-item').forEach(item => {
+    item.onclick = () => {
+      const action = item.dataset.action
+      const sels = store.getState().selections && store.getState().selections.length > 0 ? store.getState().selections : (store.getState().selection ? [store.getState().selection] : [])
+      if (sels.length === 0) { hideContextMenu(); return }
+      const s = sels[sels.length - 1]
+      const [r, c] = [s.row[0], s.column[0]]
+      switch (action) {
+        case 'cut': cutCell(); break
+        case 'copy': copyCell(); break
+        case 'paste': pasteCell(); break
+        case 'clear': sels.forEach(sel => store.clearRange(sel)); break
+        case 'insert-row': insertRow(r); break
+        case 'insert-col': insertCol(c); break
+        case 'delete-row': deleteRow(r); break
+        case 'delete-col': deleteCol(c); break
+        case 'merge': mergeCells(); break
+        case 'unmerge': sels.forEach(sel => store.unmergeCells(sel)); break
+        case 'row-height': showRowHeightDialog(); break
+        case 'col-width': showColWidthDialog(); break
+        case 'insert-comment': addComment(r, c); break
+        case 'insert-link': insertLink(); break
+      }
+      hideContextMenu()
+    }
+  })
+}
+
+function setupToolbar() {
+  document.getElementById('btn-undo').onclick     = () => store.undo()
+  document.getElementById('btn-redo').onclick     = () => store.redo()
+  document.getElementById('btn-print').onclick    = () => window.print()
+  document.getElementById('btn-save').onclick     = () => saveToFile()
+  document.getElementById('btn-bold').onclick     = () => toggleBold()
+  document.getElementById('btn-italic').onclick   = () => toggleItalic()
+  document.getElementById('btn-underline').onclick= () => toggleUnderline()
+  document.getElementById('btn-strikethrough').onclick = () => toggleStrikethrough()
+  document.getElementById('btn-wrap').onclick     = () => toggleWrap()
+  document.getElementById('btn-align-left').onclick   = () => setAlignment(0)
+  document.getElementById('btn-align-center').onclick = () => setAlignment(1)
+  document.getElementById('btn-align-right').onclick  = () => setAlignment(2)
+  document.getElementById('btn-valign-top').onclick   = () => setVAlignment(1)
+  document.getElementById('btn-valign-mid').onclick   = () => setVAlignment(2)
+  document.getElementById('btn-valign-bot').onclick   = () => setVAlignment(3)
+  document.getElementById('btn-indent-dec').onclick   = () => setIndent(-1)
+  document.getElementById('btn-indent-inc').onclick   = () => setIndent(1)
+  document.getElementById('btn-autosum').onclick  = () => autoSum()
+  document.getElementById('btn-find').onclick     = () => showFindDialog()
+  document.getElementById('btn-sort-asc').onclick = () => { const s = store.getState().selection; if (s) sortColumn(s.column[0], 'asc') }
+  document.getElementById('btn-sort-desc').onclick= () => { const s = store.getState().selection; if (s) sortColumn(s.column[0], 'desc') }
+  document.getElementById('btn-filter').onclick   = () => applyFilter()
+  document.getElementById('btn-text-color').onclick = e => showColorPicker(e.currentTarget, 'text')
+  document.getElementById('btn-bg-color').onclick   = e => showColorPicker(e.currentTarget, 'bg')
+  document.getElementById('btn-border').onclick     = e => { e.stopPropagation(); showBorderPopup(e.currentTarget) }
+  document.getElementById('btn-merge-menu').onclick = e => { e.stopPropagation(); showMergePopup(e.currentTarget) }
+  document.getElementById('btn-freeze').onclick     = e => { e.stopPropagation(); showFreezePopup(e.currentTarget) }
+  document.getElementById('btn-insert-image').onclick = () => document.getElementById('image-uploader').click()
+  document.getElementById('btn-insert-link').onclick  = () => insertLink()
+  document.getElementById('btn-insert-comment').onclick = () => { const s = store.getState().selection; if (s) addComment(s.row[0], s.column[0]) }
+  document.getElementById('btn-zoom-out').onclick = () => setZoom(currentZoom - 0.1)
+  document.getElementById('btn-zoom-in').onclick  = () => setZoom(currentZoom + 0.1)
+  document.getElementById('btn-font-size-dec').onclick = () => {
+    const cur = parseInt(document.getElementById('font-size').value) || 12
+    const ns = Math.max(6, cur - 2); document.getElementById('font-size').value = ns; setFontSize(ns)
+  }
+  document.getElementById('btn-font-size-inc').onclick = () => {
+    const cur = parseInt(document.getElementById('font-size').value) || 12
+    const ns = Math.min(400, cur + 2); document.getElementById('font-size').value = ns; setFontSize(ns)
+  }
+  document.getElementById('btn-add-sheet').onclick = () => addSheet()
+
+  document.getElementById('font-family').onchange = e => setFontFamily(e.target.value)
+  document.getElementById('font-size').onchange   = e => setFontSize(e.target.value)
+  document.getElementById('font-size').onkeydown  = e => { if (e.key === 'Enter') { e.preventDefault(); setFontSize(e.target.value); document.getElementById('spreadsheet').focus() } }
+  document.getElementById('number-format').onchange = e => setNumberFormat(e.target.value)
+
+  // Image uploader
+  document.getElementById('image-uploader').onchange = e => {
+    const file = e.target.files[0]; if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const src = ev.target.result
+      const img = new Image()
+      img.onload = () => { insertFloatImage(src, img.naturalWidth, img.naturalHeight) }
+      img.src = src
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+}
+
+function setupFormulaBar() {
+  const input = document.getElementById('formula-input')
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const s = store.getState().selection; if (!s) return
+      const [r, c] = [s.row[0], s.column[0]]
+      const value = input.value
+      if (value.startsWith('=')) store.setCell(r, c, { v: null, f: value })
+      else { const num = Number(value); store.setCell(r, c, { v: isNaN(num) || value === '' ? value : num }) }
+      moveSelection(1, 0)
+    }
+    if (e.key === 'Escape') { updateFormulaBar(); input.blur() }
+  })
+  input.addEventListener('focus', () => {
+    const s = store.getState().selection; if (!s) return
+    const [r, c] = [s.row[0], s.column[0]]
+    const cell = store.getCell(r, c)
+    input.value = cell?.f || (cell?.v != null ? String(cell.v) : '')
+  })
+  document.getElementById('cell-address').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const ref = e.target.value.trim().toUpperCase()
+      const m = ref.match(/^([A-Z]+)(\d+)$/)
+      if (m) {
+        const c = m[1].split('').reduce((acc, ch) => acc * 26 + ch.charCodeAt(0) - 65, 0) - (m[1].length > 1 ? 0 : 0)
+        const r = parseInt(m[2]) - 1
+        store.setSelection({ row: [r, r], column: [c, c] })
+      }
+      document.getElementById('spreadsheet').focus()
+    }
+  })
+}
+
+function setupBorderPopup() {
+  document.querySelectorAll('.border-grid-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation()
+      applyBorder(btn.dataset.border)
+      document.getElementById('border-popup').style.display = 'none'
+    })
+  })
+}
+
+function setupFreezePopup() {
+  document.querySelectorAll('.freeze-popup-item').forEach(item => {
+    item.addEventListener('click', e => {
+      e.stopPropagation()
+      applyFreeze(item.dataset.freeze)
+      document.getElementById('freeze-popup').style.display = 'none'
+    })
+  })
+}
+
+function setupMergePopup() {
+  document.querySelectorAll('.merge-popup-item').forEach(item => {
+    item.addEventListener('click', e => {
+      e.stopPropagation()
+      const s = store.getState().selection; if (!s) return
+      const action = item.dataset.merge
+      if (action === 'merge-all') mergeCells()
+      else if (action === 'merge-h') {
+        // merge each row horizontally
+        for (let r = s.row[0]; r <= s.row[1]; r++)
+          store.mergeCells({ row: [r, r], column: [s.column[0], s.column[1]] })
+      } else if (action === 'merge-v') {
+        for (let c = s.column[0]; c <= s.column[1]; c++)
+          store.mergeCells({ row: [s.row[0], s.row[1]], column: [c, c] })
+      } else if (action === 'unmerge') unmergeCells()
+      document.getElementById('merge-popup').style.display = 'none'
+    })
+  })
+}
+
+// ===== helper: resize image overlay to match canvas =====
+function syncOverlaySize() {
+  const overlay = document.getElementById('image-overlay')
+  const canvas = renderer && renderer.canvas
+  if (!canvas || !overlay) return
+  const rect = canvas.getBoundingClientRect()
+  overlay.style.width = rect.width + 'px'
+  overlay.style.height = rect.height + 'px'
+}
+
+// ===== KICK OFF =====
+init()
+syncOverlaySize()
+window.addEventListener('resize', syncOverlaySize)
+</script>
+</body>
+</html>

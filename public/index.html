@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#4285f4">
+  <meta name="description" content="Luckysheet vNext - Modern Spreadsheet Application">
+  <title>Luckysheet vNext</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    #app {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .toolbar {
+      height: 40px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      gap: 4px;
+    }
+    
+    .toolbar button {
+      padding: 4px 8px;
+      border: 1px solid #dadce0;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .toolbar button:hover {
+      background: #f1f3f4;
+    }
+    
+    .toolbar .separator {
+      width: 1px;
+      height: 24px;
+      background: #dadce0;
+      margin: 0 4px;
+    }
+    
+    .spreadsheet-container {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .sheet-tabs {
+      height: 32px;
+      background: #f8f9fa;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      gap: 4px;
+    }
+    
+    .sheet-tab {
+      padding: 4px 12px;
+      border: 1px solid #dadce0;
+      background: white;
+      border-radius: 4px 4px 0 0;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .sheet-tab.active {
+      background: #4285f4;
+      color: white;
+      border-color: #4285f4;
+    }
+    
+    .status-bar {
+      height: 24px;
+      background: #f8f9fa;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 11px;
+      color: #666;
+    }
+    
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #4285f4;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div class="spinner"></div>
+  </div>
+  
+  <div id="app">
+    <div class="toolbar">
+      <button id="btn-undo" title="Undo (Ctrl+Z)">Undo</button>
+      <button id="btn-redo" title="Redo (Ctrl+Y)">Redo</button>
+      <div class="separator"></div>
+      <button id="btn-bold" title="Bold (Ctrl+B)">B</button>
+      <button id="btn-italic" title="Italic (Ctrl+I)">I</button>
+      <button id="btn-underline" title="Underline (Ctrl+U)">U</button>
+      <div class="separator"></div>
+      <button id="btn-save" title="Save">Save</button>
+      <button id="btn-load" title="Load">Load</button>
+    </div>
+    
+    <div class="spreadsheet-container" id="spreadsheet"></div>
+    
+    <div class="sheet-tabs" id="sheet-tabs"></div>
+    
+    <div class="status-bar">
+      <span id="status-cell">Ready</span>
+    </div>
+  </div>
+
+  <script type="module">
+    import { Spreadsheet } from '../src/Spreadsheet.ts'
+    
+    const sampleData = {
+      sheets: [
+        {
+          name: 'Sheet1',
+          index: 0,
+          row: 100,
+          column: 26,
+          celldata: [
+            { r: 0, c: 0, v: { v: 'Name' } },
+            { r: 0, c: 1, v: { v: 'Age' } },
+            { r: 0, c: 2, v: { v: 'Score' } },
+            { r: 1, c: 0, v: { v: 'Alice' } },
+            { r: 1, c: 1, v: { v: 25 } },
+            { r: 1, c: 2, v: { v: 95 } },
+            { r: 2, c: 0, v: { v: 'Bob' } },
+            { r: 2, c: 1, v: { v: 30 } },
+            { r: 2, c: 2, v: { v: 88 } },
+            { r: 3, c: 0, v: { v: 'Charlie' } },
+            { r: 3, c: 1, v: { v: 28 } },
+            { r: 3, c: 2, v: { v: 92 } },
+            { r: 5, c: 0, v: { v: 'Average' } },
+            { r: 5, c: 1, v: { v: null, f: '=AVERAGE(B2:B4)' } },
+            { r: 5, c: 2, v: { v: null, f: '=AVERAGE(C2:C4)' } },
+          ],
+          config: {
+            rowlen: {},
+            columnlen: { 0: 100, 1: 80, 2: 80 },
+            merge: {},
+            border: {},
+          },
+        },
+        {
+          name: 'Sheet2',
+          index: 1,
+          row: 100,
+          column: 26,
+          celldata: [],
+          config: {
+            rowlen: {},
+            columnlen: {},
+            merge: {},
+            border: {},
+          },
+        },
+      ],
+      activeSheetIndex: 0,
+    }
+
+    let spreadsheet
+    
+    async function init() {
+      spreadsheet = new Spreadsheet({
+        container: 'spreadsheet',
+        data: sampleData,
+      })
+
+      spreadsheet.on('cell:click', (row, col) => {
+        document.getElementById('status-cell').textContent = `Cell: ${String.fromCharCode(65 + col)}${row + 1}`
+      })
+
+      spreadsheet.on('workbook:load', () => {
+        updateSheetTabs()
+      })
+
+      spreadsheet.on('sheet:change', () => {
+        updateSheetTabs()
+      })
+
+      document.getElementById('btn-undo').addEventListener('click', () => spreadsheet.undo())
+      document.getElementById('btn-redo').addEventListener('click', () => spreadsheet.redo())
+      
+      document.getElementById('btn-save').addEventListener('click', () => {
+        const data = spreadsheet.getData()
+        localStorage.setItem('luckysheet-data', JSON.stringify(data))
+        alert('Saved!')
+      })
+      
+      document.getElementById('btn-load').addEventListener('click', () => {
+        const saved = localStorage.getItem('luckysheet-data')
+        if (saved) {
+          spreadsheet.setData(JSON.parse(saved))
+          alert('Loaded!')
+        } else {
+          alert('No saved data found')
+        }
+      })
+
+      updateSheetTabs()
+      
+      document.getElementById('loading').style.display = 'none'
+    }
+
+    function updateSheetTabs() {
+      const tabs = document.getElementById('sheet-tabs')
+      const data = spreadsheet.getData()
+      tabs.innerHTML = ''
+      
+      data.sheets.forEach((sheet, index) => {
+        const tab = document.createElement('div')
+        tab.className = `sheet-tab ${index === data.activeSheetIndex ? 'active' : ''}`
+        tab.textContent = sheet.name
+        tab.addEventListener('click', () => spreadsheet.setActiveSheet(index))
+        tabs.appendChild(tab)
+      })
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('SW registered:', registration)
+          })
+          .catch(error => {
+            console.log('SW registration failed:', error)
+          })
+      })
+    }
+
+    init()
+  </script>
+</body>
+</html>

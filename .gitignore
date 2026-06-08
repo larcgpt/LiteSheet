@@ -1,0 +1,10 @@
+node_modules/
+pkg/
+dist/assets/
+dist/index.html
+dist/manifest.json
+dist/sw.js
+*.js.map
+audit.cjs
+*.log
+.env

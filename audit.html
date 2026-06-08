@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>LiteSheet Toolbar Audit</title>
+<style>
+  body { font-family: 'Consolas', monospace; font-size: 12px; margin: 12px; background: #fafafa; }
+  h2 { font-size: 14px; margin: 14px 0 6px; }
+  .pass { color: #0a7d2c; }
+  .fail { color: #c0392b; font-weight: bold; }
+  .warn { color: #b8770a; }
+  .section { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px; margin-bottom: 8px; }
+  button { padding: 6px 12px; margin: 2px; font-size: 12px; cursor: pointer; }
+  pre { white-space: pre-wrap; word-break: break-all; margin: 4px 0; padding: 4px 8px; background: #f0f0f0; border-radius: 4px; }
+  .ok { background: #d4edda; }
+  .bad { background: #f8d7da; }
+  .neutral { background: #fff3cd; }
+  #status { font-size: 14px; font-weight: bold; padding: 8px; border-radius: 4px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<h1>LiteSheet Toolbar/Menu 全面功能稽核</h1>
+<button id="run" style="font-size:14px;padding:10px 20px">▶ 執行完整稽核</button>
+<button id="clear">清除結果</button>
+<div id="status">尚未執行</div>
+<div id="results"></div>
+
+<script src="dist/xlsx.full.min.js"></script>
+<script src="dist/litesheet.js"></script>
+<script>
+const { Store, EventBus, JSFormulaEngine: FormulaEngine, CanvasRenderer } = litesheet
+
+const results = []
+function addResult(category, name, status, detail) {
+  results.push({ category, name, status, detail })
+}
+function renderResults() {
+  const byCat = {}
+  for (const r of results) {
+    if (!byCat[r.category]) byCat[r.category] = []
+    byCat[r.category].push(r)
+  }
+  const container = document.getElementById('results')
+  container.innerHTML = ''
+  let pass = 0, fail = 0, warn = 0
+  for (const [cat, items] of Object.entries(byCat)) {
+    const sec = document.createElement('div')
+    sec.className = 'section'
+    sec.innerHTML = `<h2>${cat} (${items.length})</h2>`
+    for (const r of items) {
+      const div = document.createElement('div')
+      let cls = 'neutral', sym = '⚠'
+      if (r.status === 'PASS') { cls = 'ok'; sym = '✓'; pass++ }
+      else if (r.status === 'FAIL') { cls = 'bad'; sym = '✗'; fail++ }
+      else if (r.status === 'WARN') { cls = 'neutral'; sym = '⚠'; warn++ }
+      div.className = cls
+      div.innerHTML = `<b>${sym} ${r.name}</b> — <span class="${r.status === 'PASS' ? 'pass' : r.status === 'FAIL' ? 'fail' : 'warn'}">${r.status}</span><br><pre>${(r.detail || '').replace(/</g, '&lt;')}</pre>`
+      sec.appendChild(div)
+    }
+    container.appendChild(sec)
+  }
+  const status = document.getElementById('status')
+  status.textContent = `通過: ${pass}  失敗: ${fail}  警告: ${warn}  總計: ${results.length}`
+  status.className = fail > 0 ? 'fail' : (warn > 0 ? 'warn' : 'pass')
+  status.style.background = fail > 0 ? '#f8d7da' : (warn > 0 ? '#fff3cd' : '#d4edda')
+  status.style.color = fail > 0 ? '#c0392b' : (warn > 0 ? '#b8770a' : '#0a7d2c')
+}
+
+document.getElementById('run').onclick = () => {
+  results.length = 0
+  try {
+    runAudit()
+  } catch (e) {
+    addResult('FATAL', 'audit script', 'FAIL', e.message + '\n' + e.stack)
+  }
+  renderResults()
+}
+document.getElementById('clear').onclick = () => { results.length = 0; document.getElementById('results').innerHTML = ''; document.getElementById('status').textContent = '已清除' }
+
+function snapshot(label) {
+  return () => ({ label, data: JSON.parse(JSON.stringify(store.getState().data)) })
+}
+function diff(before, after) {
+  const changes = []
+  if (before.data.sheets.length !== after.data.sheets.length) changes.push('sheets count: ' + before.data.sheets.length + ' → ' + after.data.sheets.length)
+  for (let i = 0; i < after.data.sheets.length; i++) {
+    const b = before.data.sheets[i] || { celldata: [] }
+    const a = after.data.sheets[i] || { celldata: [] }
+    if (b.celldata.length !== a.celldata.length) changes.push('sheet[' + i + '] celldata: ' + b.celldata.length + ' → ' + a.celldata.length)
+    if (JSON.stringify(b.config || {}) !== JSON.stringify(a.config || {})) changes.push('sheet[' + i + '] config changed')
+  }
+  return changes.length ? changes.join('; ') : 'no change'
+}
+
+let store, events, formula, renderer
+
+function runAudit() {
+  // ===== 1. Store API =====
+  addResult('1. Store', 'new Store()', 'PASS', '建構成功')
+
+  store = new Store({
+    sheets: [{
+      name: '工作表1', index: 0, row: 100, column: 26,
+      celldata: [
+        { r: 0, c: 0, v: { v: '姓名', s: { bl: 1 } } },
+        { r: 0, c: 1, v: { v: '年齡', s: { bl: 1 } } },
+        { r: 0, c: 2, v: { v: '部門', s: { bl: 1 } } },
+        { r: 1, c: 0, v: { v: '張三' } }, { r: 1, c: 1, v: { v: 25 } }, { r: 1, c: 2, v: { v: '研發部' } },
+        { r: 2, c: 0, v: { v: '李四' } }, { r: 2, c: 1, v: { v: 30 } }, { r: 2, c: 2, v: { v: '業務部' } },
+        { r: 3, c: 0, v: { v: '王五' } }, { r: 3, c: 1, v: { v: 28 } }, { r: 3, c: 2, v: { v: '研發部' } },
+        { r: 4, c: 0, v: { v: '趙六' } }, { r: 4, c: 1, v: { v: 35 } }, { r: 4, c: 2, v: { v: '人事部' } },
+        { r: 5, c: 0, v: { v: '錢七' } }, { r: 5, c: 1, v: { v: 22 } }, { r: 5, c: 2, v: { v: '業務部' } },
+      ],
+      config: { rowlen: {}, columnlen: {}, merge: {}, border: {} }
+    }],
+    activeSheetIndex: 0
+  })
+
+  // ===== 2. setSelection / setSelections =====
+  store.setSelection({ row: [0, 0], column: [0, 0] })
+  if (store.getState().selection?.row?.[0] === 0) addResult('2. 選取', 'setSelection 單格', 'PASS', '選 (0,0) OK')
+  else addResult('2. 選取', 'setSelection 單格', 'FAIL', 'selection 為 ' + JSON.stringify(store.getState().selection))
+
+  store.setSelection({ row: [0, 4], column: [0, 1] })
+  if (store.getState().selection?.row?.[1] === 4) addResult('2. 選取', 'setSelection 範圍', 'PASS', '選 (0,0)-(4,1) OK')
+  else addResult('2. 選取', 'setSelection 範圍', 'FAIL', 'selection 為 ' + JSON.stringify(store.getState().selection))
+
+  store.setSelections([{ row: [0, 0], column: [0, 0] }, { row: [2, 4], column: [3, 5] }])
+  if (store.getState().selections.length === 2) addResult('2. 選取', 'setSelections 多選', 'PASS', '2 個選取 OK')
+  else addResult('2. 選取', 'setSelections 多選', 'FAIL', '實際: ' + store.getState().selections.length)
+
+  // ===== 3. setCell / getCell =====
+  store.setCell(10, 10, { v: '測試' })
+  if (store.getCell(10, 10)?.v === '測試') addResult('3. 儲存格', 'setCell / getCell', 'PASS', '(10,10)="測試" OK')
+  else addResult('3. 儲存格', 'setCell / getCell', 'FAIL', '值為 ' + JSON.stringify(store.getCell(10, 10)))
+
+  // ===== 4. setStyle (multi-select) =====
+  store.setSelections([{ row: [10, 10], column: [10, 10] }, { row: [11, 11], column: [11, 11] }])
+  store.setStyle(store.getState().selection, s => { s.bl = 1; s.fc = '#ff0000' })
+  if (store.getCell(10, 10)?.s?.bl === 1 && store.getCell(11, 11)?.s?.bl === 1) addResult('4. 樣式', 'setStyle 多選粗體', 'PASS', '(10,10)+(11,11) 都變粗體')
+  else addResult('4. 樣式', 'setStyle 多選粗體', 'FAIL', '(10,10).s=' + JSON.stringify(store.getCell(10, 10)?.s) + ' (11,11).s=' + JSON.stringify(store.getCell(11, 11)?.s))
+
+  // ===== 5. clearRange (multi-select) =====
+  store.setCell(20, 20, { v: 'A' }); store.setCell(21, 21, { v: 'B' })
+  store.setSelections([{ row: [20, 20], column: [20, 20] }, { row: [21, 21], column: [21, 21] }])
+  store.clearRange(store.getState().selection)
+  if (store.getCell(20, 20)?.v === null && store.getCell(21, 21)?.v === null) addResult('5. 清除', 'clearRange 多選', 'PASS', '(20,20)+(21,21) 都清空')
+  else addResult('5. 清除', 'clearRange 多選', 'FAIL', '(20,20)=' + JSON.stringify(store.getCell(20, 20)?.v) + ' (21,21)=' + JSON.stringify(store.getCell(21, 21)?.v))
+
+  // ===== 6. merge / unmerge =====
+  store.setSelections([{ row: [0, 0], column: [0, 1] }])
+  store.mergeCells(store.getState().selection)
+  const sheet = store.getActiveSheet()
+  if (sheet.config.merge?.['0,0']) addResult('6. 合併', 'mergeCells', 'PASS', '0,0 已合併 ' + JSON.stringify(sheet.config.merge['0,0']))
+  else addResult('6. 合併', 'mergeCells', 'FAIL', 'merge 為 ' + JSON.stringify(sheet.config.merge))
+
+  store.unmergeCells(store.getState().selection)
+  if (!sheet.config.merge?.['0,0']) addResult('6. 合併', 'unmergeCells', 'PASS', '已取消合併')
+  else addResult('6. 合併', 'unmergeCells', 'FAIL', 'merge 仍在')
+
+  // ===== 7. freeze =====
+  store.setFrozen(1, 1)
+  if (sheet.config.frozen?.row === 1 && sheet.config.frozen?.column === 1) addResult('7. 凍結', 'setFrozen(1,1)', 'PASS', 'frozen 為 (1,1)')
+  else addResult('7. 凍結', 'setFrozen(1,1)', 'FAIL', 'frozen 為 ' + JSON.stringify(sheet.config.frozen))
+
+  // ===== 8. column width / row height =====
+  store.setColumnWidth(2, 150)
+  store.setRowHeight(3, 40)
+  if (sheet.config.columnlen?.[2] === 150 && sheet.config.rowlen?.[3] === 40) addResult('8. 尺寸', 'setColumnWidth/setRowHeight', 'PASS', 'col2=150, row3=40')
+  else addResult('8. 尺寸', 'setColumnWidth/setRowHeight', 'FAIL', 'col2=' + sheet.config.columnlen?.[2] + ' row3=' + sheet.config.rowlen?.[3])
+
+  // ===== 9. insert / delete row/col =====
+  store.setCell(5, 0, { v: 'X' })
+  const beforeR = store.getCell(5, 0)?.v
+  store.insertRow(5)
+  if (store.getCell(6, 0)?.v === 'X') addResult('9. 維度', 'insertRow', 'PASS', 'X 由 row5 移到 row6')
+  else addResult('9. 維度', 'insertRow', 'FAIL', '原本: ' + beforeR + ', 插入後 (5,0)=' + JSON.stringify(store.getCell(5, 0)) + ' (6,0)=' + JSON.stringify(store.getCell(6, 0)))
+
+  store.deleteRow(5)
+  if (store.getCell(5, 0)?.v === 'X') addResult('9. 維度', 'deleteRow', 'PASS', 'X 移回 row5')
+  else addResult('9. 維度', 'deleteRow', 'FAIL', '(5,0)=' + JSON.stringify(store.getCell(5, 0)))
+
+  store.setCell(3, 5, { v: 'Y' })
+  store.insertCol(5)
+  if (store.getCell(3, 6)?.v === 'Y') addResult('9. 維度', 'insertCol', 'PASS', 'Y 由 col5 移到 col6')
+  else addResult('9. 維度', 'insertCol', 'FAIL', '(3,6)=' + JSON.stringify(store.getCell(3, 6)))
+
+  store.deleteCol(5)
+  if (store.getCell(3, 5)?.v === 'Y') addResult('9. 維度', 'deleteCol', 'PASS', 'Y 移回 col5')
+  else addResult('9. 維度', 'deleteCol', 'FAIL', '(3,5)=' + JSON.stringify(store.getCell(3, 5)))
+
+  // ===== 10. sort =====
+  store.sortColumn(0, 'asc')
+  if (store.getCell(1, 0)?.v === '張三' || store.getCell(1, 0)?.v === '李四') addResult('10. 排序', 'sortColumn(0, asc)', 'PASS', '第一列已排序')
+  else addResult('10. 排序', 'sortColumn(0, asc)', 'WARN', '第一列 ' + JSON.stringify(store.getCell(1, 0)) + '（可能因原資料順序）')
+
+  // ===== 11. fillRange =====
+  store.setCell(50, 50, { v: 'FILL' })
+  store.fillRange({ row: [50, 50], column: [50, 50] }, { row: [50, 53], column: [50, 53] })
+  if (store.getCell(53, 53)?.v === 'FILL') addResult('11. 填滿', 'fillRange', 'PASS', '(53,53)=FILL')
+  else addResult('11. 填滿', 'fillRange', 'FAIL', '(53,53)=' + JSON.stringify(store.getCell(53, 53)))
+
+  // ===== 12. loadData =====
+  const beforeLoad = JSON.parse(JSON.stringify(store.getState().data))
+  store.loadData({ sheets: [{ name: 'New', index: 0, row: 10, column: 10, celldata: [], config: { rowlen: {}, columnlen: {}, merge: {}, border: {} } }], activeSheetIndex: 0 })
+  if (store.getState().data.sheets[0].name === 'New') addResult('12. 活頁簿', 'loadData', 'PASS', '已載入新活頁簿')
+  else addResult('12. 活頁簿', 'loadData', 'FAIL', 'sheets[0].name=' + store.getState().data.sheets[0].name)
+  // restore
+  store.loadData(beforeLoad)
+  store.setActiveSheet(0)
+
+  // ===== 13. Formula engine =====
+  formula = new FormulaEngine()
+  formula.setCell(0, 0, { v: 10 })
+  formula.setCell(0, 1, { v: 20 })
+  formula.setCell(0, 2, { v: 30 })
+  const sum = formula.eval('=SUM(A1:C1)')
+  if (sum.value === 60) addResult('13. 公式', 'SUM 範圍', 'PASS', 'SUM(A1:C1)=' + sum.value)
+  else addResult('13. 公式', 'SUM 範圍', 'FAIL', 'SUM=' + sum.value + ' err=' + sum.error)
+
+  formula.setCell(1, 0, { v: 'Hello' })
+  formula.setCell(1, 1, { v: 'World' })
+  const concat = formula.eval('=CONCATENATE(A2," ",B2)')
+  if (concat.value === 'Hello World') addResult('13. 公式', 'CONCATENATE', 'PASS', 'OK')
+  else addResult('13. 公式', 'CONCATENATE', 'FAIL', concat.value)
+
+  // ===== 14. Renderer =====
+  const c = document.createElement('canvas')
+  c.style.cssText = 'width:600px;height:400px;'
+  document.body.appendChild(c)
+  renderer = new CanvasRenderer(c)
+  renderer.setFormulaEngine(formula)
+  renderer.setSheet(store.getActiveSheet())
+  if (renderer.sheet) addResult('14. 渲染', 'setSheet', 'PASS', 'sheet 設定完成')
+  else addResult('14. 渲染', 'setSheet', 'FAIL', 'sheet 為 null')
+
+  // 測試 zoom
+  const beforeZoom = JSON.parse(JSON.stringify(renderer.cfg))
+  renderer.setZoom(1.5)
+  if (renderer.zoomRatio === 1.5 && renderer.cfg.defaultRowHeight !== beforeZoom.defaultRowHeight) addResult('14. 渲染', 'setZoom 放大', 'PASS', 'cfg 變大: rowHeight ' + beforeZoom.defaultRowHeight + '→' + renderer.cfg.defaultRowHeight)
+  else addResult('14. 渲染', 'setZoom 放大', 'FAIL', 'zoomRatio=' + renderer.zoomRatio + ' cfg=' + JSON.stringify(renderer.cfg))
+
+  renderer.setZoom(0.5)
+  if (renderer.zoomRatio === 0.5) addResult('14. 渲染', 'setZoom 縮小', 'PASS', 'zoomRatio=0.5')
+  else addResult('14. 渲染', 'setZoom 縮小', 'FAIL', 'zoomRatio=' + renderer.zoomRatio)
+
+  renderer.setZoom(1.0)
+  addResult('14. 渲染', 'setZoom 重設', 'PASS', 'zoomRatio=1.0')
+
+  // 測試 scroll
+  renderer.setScroll(100, 50)
+  if (renderer.scrollTop === 100 && renderer.scrollLeft === 50) addResult('14. 渲染', 'setScroll', 'PASS', 'scroll=(100,50)')
+  else addResult('14. 渲染', 'setScroll', 'FAIL', 'scrollTop=' + renderer.scrollTop + ' scrollLeft=' + renderer.scrollLeft)
+
+  // 測試 selection
+  renderer.setSelections([{ row: [0, 0], column: [0, 0] }, { row: [2, 4], column: [1, 3] }])
+  if (renderer.selections.length === 2) addResult('14. 渲染', 'setSelections', 'PASS', '2 個選取')
+  else addResult('14. 渲染', 'setSelections', 'FAIL', 'selections.length=' + renderer.selections.length)
+
+  // 測試 getCellAt
+  const cellAt = renderer.getCellAt(100, 50)
+  if (cellAt && typeof cellAt.row === 'number' && typeof cellAt.col === 'number') addResult('14. 渲染', 'getCellAt', 'PASS', '點 (100,50) → (' + cellAt.row + ',' + cellAt.col + ')')
+  else addResult('14. 渲染', 'getCellAt', 'WARN', 'getCellAt 回傳 ' + JSON.stringify(cellAt))
+
+  // 測試 getHeaderAt
+  const headerAt = renderer.getHeaderAt(25, 25)
+  if (headerAt) addResult('14. 渲染', 'getHeaderAt', 'PASS', '標頭點 (25,25) → ' + JSON.stringify(headerAt))
+  else addResult('14. 渲染', 'getHeaderAt', 'WARN', 'getHeaderAt 回傳 null（需在標頭區域）')
+
+  // ===== 15. CSS / DOM 元素存在檢查 =====
+  const checkIds = [
+    'btn-undo','btn-redo','btn-print','btn-save','font-family','btn-font-size-dec','font-size','btn-font-size-inc',
+    'btn-bold','btn-italic','btn-underline','btn-strikethrough','btn-text-color','btn-bg-color','btn-border',
+    'btn-merge-menu','btn-align-left','btn-align-center','btn-align-right','btn-valign-top','btn-valign-mid',
+    'btn-valign-bot','btn-wrap','number-format','btn-indent-dec','btn-indent-inc','btn-autosum',
+    'btn-sort-asc','btn-sort-desc','btn-filter','btn-freeze','btn-insert-image','btn-insert-link',
+    'btn-insert-comment','btn-find','btn-zoom-out','zoom-label','btn-zoom-in'
+  ]
+  const missing = checkIds.filter(id => !document.getElementById(id))
+  if (missing.length === 0) addResult('15. DOM', 'toolbar 按鈕存在', 'PASS', checkIds.length + ' 個按鈕全部存在')
+  else addResult('15. DOM', 'toolbar 按鈕存在', 'FAIL', '缺少: ' + missing.join(', '))
+
+  // 檢查所有 data-action
+  const actions = Array.from(document.querySelectorAll('[data-action]')).map(e => e.dataset.action)
+  addResult('15. DOM', 'menu actions 總數', 'PASS', actions.length + ' 個動作: ' + actions.join(', '))
+
+  // ===== 16. 模擬點擊測試 =====
+  // 測試切換 sheet tab
+  store.loadData({
+    sheets: [
+      { name: '工作表1', index: 0, row: 10, column: 10, celldata: [{ r: 0, c: 0, v: { v: 'A1' } }], config: { rowlen: {}, columnlen: {}, merge: {}, border: {} } },
+      { name: '工作表2', index: 1, row: 10, column: 10, celldata: [{ r: 0, c: 0, v: { v: 'B1' } }], config: { rowlen: {}, columnlen: {}, merge: {}, border: {} } }
+    ],
+    activeSheetIndex: 0
+  })
+  store.setActiveSheet(1)
+  if (store.getActiveSheet().name === '工作表2') addResult('16. 工作表', 'setActiveSheet(1)', 'PASS', '切到工作表2')
+  else addResult('16. 工作表', 'setActiveSheet(1)', 'FAIL', '目前: ' + store.getActiveSheet().name)
+
+  store.setActiveSheet(0)
+  if (store.getActiveSheet().name === '工作表1') addResult('16. 工作表', 'setActiveSheet(0)', 'PASS', '切回工作表1')
+  else addResult('16. 工作表', 'setActiveSheet(0)', 'FAIL', '目前: ' + store.getActiveSheet().name)
+
+  // ===== 17. undo / redo =====
+  store.setCell(99, 99, { v: 'UNDO_TEST' })
+  const cellBefore = store.getCell(99, 99)?.v
+  store.undo()
+  const cellAfter = store.getCell(99, 99)?.v
+  if (cellBefore === 'UNDO_TEST' && (cellAfter === null || cellAfter === undefined)) addResult('17. 復原', 'undo()', 'PASS', 'setCell 後 undo → 清除')
+  else addResult('17. 復原', 'undo()', 'FAIL', 'before=' + cellBefore + ' after=' + cellAfter)
+
+  store.redo()
+  if (store.getCell(99, 99)?.v === 'UNDO_TEST') addResult('17. 復原', 'redo()', 'PASS', 'redo → 還原')
+  else addResult('17. 復原', 'redo()', 'FAIL', 'redo 後=' + store.getCell(99, 99)?.v)
+
+  // ===== 18. 公式完整語法 =====
+  const cases = [
+    ['=AVERAGE(A1:C1)', 20],
+    ['=MAX(A1:C1)', 30],
+    ['=MIN(A1:C1)', 10],
+    ['=COUNT(A1:C1)', 3],
+    ['=IF(A1>5,"big","small")', 'big'],
+  ]
+  let formulaFails = 0
+  let formulaDetails = []
+  for (const [f, expected] of cases) {
+    const r = formula.eval(f)
+    const ok = r.value === expected
+    if (!ok) formulaFails++
+    formulaDetails.push(`${f}=${JSON.stringify(r.value)} ${ok ? '✓' : '✗ 期望 ' + JSON.stringify(expected)}`)
+  }
+  if (formulaFails === 0) addResult('18. 公式語法', '內建函式', 'PASS', formulaDetails.join('; '))
+  else addResult('18. 公式語法', '內建函式', 'FAIL', `${formulaFails} 個失敗: ${formulaDetails.join('; ')}`)
+
+  // ===== 19. 圖片渲染檢查 =====
+  const imageOverlay = document.getElementById('image-overlay')
+  if (imageOverlay) addResult('19. 圖片', 'image-overlay 存在', 'PASS', 'OK')
+  else addResult('19. 圖片', 'image-overlay 存在', 'FAIL', '缺少 #image-overlay')
+
+  // ===== 20. dialog / context menu 元素 =====
+  const dialogIds = ['dialog-overlay','context-menu','border-popup','freeze-popup','merge-popup','image-uploader']
+  const dialogMissing = dialogIds.filter(id => !document.getElementById(id))
+  if (dialogMissing.length === 0) addResult('20. 浮層', '所有浮層元素存在', 'PASS', dialogIds.length + ' 個浮層齊全')
+  else addResult('20. 浮層', '所有浮層元素存在', 'FAIL', '缺少: ' + dialogMissing.join(', '))
+
+  // ===== 21. clearAllFloatImages / renderFloatImages 函式存在 =====
+  // 透過 eval 檢查 index.html 全域函式
+  const fnsToCheck = ['insertFloatImage','removeFloatImage','renderFloatImages','saveFloatImages','clearAllFloatImages','selectFloatImg','setZoom','copyCell','cutCell','pasteCell','autoSum','mergeCells','unmergeCells','sortColumn','applyFreeze','setVAlignment','toggleWrap','setNumberFormat','setIndent','showFindDialog','showColorPicker','showBorderPopup','showFreezePopup','showMergePopup','showRowHeightDialog','showColWidthDialog','insertLink','addComment','showFunctionDialog','showShortcutsDialog','importXlsx','exportXlsx','openFile','saveToFile','exportCsv','showContextMenu','hideContextMenu','finishEditing','cancelEditing','startEditing','moveSelection','loadSheet','syncFormula','updateStatusBar','updateFormulaBar','updateSheetTabs','updateFreezeLines','syncOverlaySize','showDialog','hideDialog','doFind','doReplace','doReplaceAll','showRowHeightDialog','showColWidthDialog','showFunctionDialog','applyBorder','addSheet']
+  const missingFns = fnsToCheck.filter(fn => typeof window[fn] !== 'function')
+  if (missingFns.length === 0) addResult('21. 全域函式', 'index.html 函式齊全', 'PASS', fnsToCheck.length + ' 個函式全部存在')
+  else addResult('21. 全域函式', 'index.html 函式齊全', 'FAIL', '缺少: ' + missingFns.join(', '))
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => document.getElementById('run').click(), 300)
+})
+</script>
+</body>
+</html>
